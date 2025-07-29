@@ -187,10 +187,5 @@ class StockAnalyzer:
         print(f"當前價格: ${current_signal['price']}")
         print(f"建議動作: {current_signal['signal']}")
         print(f"訊號強度: {current_signal['strength']}")
-        print(f"\n最近30天摘要:")
-        print(f"  買入訊號: {summary['buy_signals']} 次")
-        print(f"  賣出訊號: {summary['sell_signals']} 次")
-        print(f"  持有天數: {summary['hold_days']} 天")
-        print(f"  平均強度: {summary['avg_strength']}")
         
         return True 
