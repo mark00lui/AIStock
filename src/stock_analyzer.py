@@ -120,9 +120,9 @@ class StockAnalyzer:
             signals.iloc[i, signals.columns.get_loc('Strength')] = strength
             
             # 根據強度決定最終訊號
-            if strength >= 30:
+            if strength >= 20:  # 降低買入閾值
                 signals.iloc[i, signals.columns.get_loc('Signal')] = 1
-            elif strength <= -30:
+            elif strength <= -20:  # 降低賣出閾值
                 signals.iloc[i, signals.columns.get_loc('Signal')] = -1
         
         self.signals = signals
