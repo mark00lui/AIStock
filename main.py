@@ -15,7 +15,7 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description='AIStock 股票訊號分析系統')
-    parser.add_argument('symbol', help='股票代碼 (例如: AAPL, 2330.TW)')
+    parser.add_argument('symbols', nargs='+', help='股票代碼 (例如: AAPL MSFT GOOGL 或 AAPL,MSFT,GOOGL)')
     parser.add_argument('--period', default='1y', 
                        help='資料期間 (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)')
     parser.add_argument('--plot', action='store_true', help='顯示圖表')
@@ -23,41 +23,136 @@ def main():
     
     args = parser.parse_args()
     
+    # 處理股票代碼輸入
+    symbols = []
+    for symbol_input in args.symbols:
+        # 支援逗號分隔的多個股票代碼
+        if ',' in symbol_input:
+            symbols.extend([s.strip().upper() for s in symbol_input.split(',')])
+        else:
+            symbols.append(symbol_input.upper())
+    
+    # 移除重複的股票代碼
+    symbols = list(dict.fromkeys(symbols))
+    
     print("=== AIStock 股票訊號分析系統 ===")
-    print(f"分析股票: {args.symbol}")
+    print(f"分析股票: {', '.join(symbols)}")
     print(f"資料期間: {args.period}")
     print("-" * 40)
     
-    # 創建分析器
-    analyzer = StockAnalyzer(args.symbol, args.period)
+    # 如果只有一支股票，使用原有邏輯
+    if len(symbols) == 1:
+        symbol = symbols[0]
+        analyzer = StockAnalyzer(symbol, args.period)
+        
+        if not analyzer.run_analysis():
+            print("分析失敗，請檢查股票代碼是否正確")
+            return
+        
+        # 如果需要繪圖
+        if args.plot or args.save:
+            print("\n正在生成圖表...")
+            visualizer = StockVisualizer(analyzer)
+            
+            # 繪製K線圖與訊號
+            if args.save:
+                save_path = args.save
+                if not save_path.endswith('.html'):
+                    save_path += '.html'
+                visualizer.plot_candlestick_with_signals(save_path)
+            else:
+                visualizer.plot_candlestick_with_signals()
+            
+            # 繪製技術指標
+            visualizer.plot_technical_indicators()
+            
+            # 繪製訊號強度
+            visualizer.plot_signal_strength()
+            
+            # 創建儀表板
+            visualizer.create_dashboard()
     
-    # 執行分析
-    if not analyzer.run_analysis():
-        print("分析失敗，請檢查股票代碼是否正確")
-        return
-    
-    # 如果需要繪圖
-    if args.plot or args.save:
-        print("\n正在生成圖表...")
-        visualizer = StockVisualizer(analyzer)
+    # 如果有多支股票，執行批量分析
+    else:
+        print(f"正在批量分析 {len(symbols)} 支股票...")
         
-        # 繪製K線圖與訊號
-        if args.save:
-            save_path = args.save
-            if not save_path.endswith('.html'):
-                save_path += '.html'
-            visualizer.plot_candlestick_with_signals(save_path)
-        else:
-            visualizer.plot_candlestick_with_signals()
+        results = []
+        for i, symbol in enumerate(symbols, 1):
+            print(f"\n[{i}/{len(symbols)}] 分析 {symbol}...")
+            
+            try:
+                analyzer = StockAnalyzer(symbol, args.period)
+                
+                if analyzer.run_analysis():
+                    current_signal = analyzer.get_current_signal()
+                    results.append({
+                        'symbol': symbol,
+                        'price': current_signal['price'],
+                        'signal': current_signal['signal'],
+                        'strength': current_signal['strength'],
+                        'date': current_signal['date']
+                    })
+                    print(f"  ✅ {symbol}: ${current_signal['price']:.2f} | {current_signal['signal']} | 強度: {current_signal['strength']}")
+                else:
+                    print(f"  ❌ {symbol}: 分析失敗")
+                    results.append({
+                        'symbol': symbol,
+                        'price': 0,
+                        'signal': '分析失敗',
+                        'strength': 0,
+                        'date': 'N/A'
+                    })
+                    
+            except Exception as e:
+                print(f"  ❌ {symbol}: 錯誤 - {e}")
+                results.append({
+                    'symbol': symbol,
+                    'price': 0,
+                    'signal': f'錯誤: {e}',
+                    'strength': 0,
+                    'date': 'N/A'
+                })
         
-        # 繪製技術指標
-        visualizer.plot_technical_indicators()
+        # 顯示結果摘要
+        print("\n" + "=" * 60)
+        print("=== 分析結果摘要 ===")
+        print("=" * 60)
         
-        # 繪製訊號強度
-        visualizer.plot_signal_strength()
+        # 按強度排序
+        successful_results = [r for r in results if r['signal'] in ['買入', '賣出', '持有']]
+        if successful_results:
+            successful_results.sort(key=lambda x: x['strength'], reverse=True)
         
-        # 創建儀表板
-        visualizer.create_dashboard()
+        # 顯示表格
+        print(f"{'股票代碼':<8} {'價格':<12} {'建議':<6} {'強度':<8} {'日期':<12}")
+        print("-" * 60)
+        
+        for result in results:
+            if result['signal'] in ['買入', '賣出', '持有']:
+                print(f"{result['symbol']:<8} ${result['price']:<11.2f} {result['signal']:<6} {result['strength']:<8.1f} {result['date']:<12}")
+            else:
+                print(f"{result['symbol']:<8} {'N/A':<12} {result['signal']:<6} {'N/A':<8} {result['date']:<12}")
+        
+        # 統計摘要
+        successful_count = len([r for r in results if r['signal'] in ['買入', '賣出', '持有']])
+        if successful_count > 0:
+            signal_counts = {}
+            for result in results:
+                if result['signal'] in ['買入', '賣出', '持有']:
+                    signal_counts[result['signal']] = signal_counts.get(result['signal'], 0) + 1
+            
+            print(f"\n📊 統計摘要:")
+            print(f"成功分析: {successful_count}/{len(symbols)} 支股票")
+            print(f"買入建議: {signal_counts.get('買入', 0)} 支")
+            print(f"賣出建議: {signal_counts.get('賣出', 0)} 支")
+            print(f"持有建議: {signal_counts.get('持有', 0)} 支")
+            
+            if successful_count > 0:
+                strengths = [r['strength'] for r in results if r['signal'] in ['買入', '賣出', '持有']]
+                print(f"\n強度統計:")
+                print(f"平均強度: {sum(strengths)/len(strengths):.1f}")
+                print(f"最高強度: {max(strengths):.1f}")
+                print(f"最低強度: {min(strengths):.1f}")
 
 def interactive_mode():
     """互動模式"""

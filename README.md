@@ -8,10 +8,11 @@
 - 🎯 **智能訊號**: 基於多指標加權計算，生成買入/賣出/持有訊號
 - 📈 **視覺化圖表**: 提供 K線圖、技術指標圖、訊號強度圖等多種視覺化
 - 🌍 **全球股票**: 支援美股、台股、加密貨幣等全球主要資產
-- 🔄 **批量分析**: 專用批量分析工具，一次分析多支股票
+- 🔄 **批量分析**: 主程式支援多股票批量分析，一次輸入多支股票代碼
 - 📱 **互動介面**: 提供命令列、互動式和批量分析三種使用方式
 - 📋 **結果排序**: 按訊號強度排序，快速識別最佳投資機會
 - 💾 **CSV 匯出**: 支援將分析結果匯出為 CSV 檔案
+- 🎯 **靈活輸入**: 支援空格分隔、逗號分隔等多種股票代碼輸入方式
 
 ## 技術指標
 
@@ -43,6 +44,7 @@ python main.py AAPL --plot
 
 ### 命令列模式
 
+#### 單一股票分析
 ```bash
 # 基本分析
 python main.py AAPL
@@ -55,6 +57,24 @@ python main.py AAPL --save analysis_result.html
 
 # 台股分析
 python main.py 2330.TW --period 1y
+```
+
+#### 多股票批量分析
+```bash
+# 空格分隔多個股票代碼
+python main.py AAPL MSFT GOOGL TSLA
+
+# 逗號分隔多個股票代碼
+python main.py "AAPL,MSFT,GOOGL,TSLA"
+
+# 混合使用
+python main.py "AAPL,MSFT" GOOGL TSLA
+
+# 指定期間批量分析
+python main.py AAPL MSFT GOOGL --period 6mo
+
+# 批量分析並顯示圖表（僅第一支股票）
+python main.py AAPL MSFT GOOGL --plot
 ```
 
 ### 互動模式
@@ -71,7 +91,22 @@ python main.py
 
 ### 批量分析模式
 
-使用專門的批量分析工具，可以一次分析多支股票：
+#### 主程式批量分析
+使用 `main.py` 可以一次分析多支股票：
+
+```bash
+# 空格分隔
+python main.py AAPL MSFT GOOGL TSLA
+
+# 逗號分隔
+python main.py "AAPL,MSFT,GOOGL,TSLA"
+
+# 混合使用
+python main.py "AAPL,MSFT" GOOGL TSLA
+```
+
+#### 專用批量分析工具
+使用專門的批量分析工具，提供更多功能：
 
 ```bash
 python batch_analysis.py
@@ -79,6 +114,8 @@ python batch_analysis.py
 
 #### 批量分析功能特色
 
+- **主程式支援**: `main.py` 支援多股票批量分析
+- **靈活輸入**: 支援空格分隔、逗號分隔等多種輸入方式
 - **快速分析**: 預設股票組合（科技股、金融股、加密貨幣、台股）
 - **互動輸入**: 自訂股票代碼列表
 - **結果排序**: 按訊號強度排序顯示結果
@@ -87,13 +124,22 @@ python batch_analysis.py
 
 #### 使用範例
 
-**1. 快速分析預設組合**
+**1. 主程式批量分析**
+```bash
+# 快速分析多支股票
+python main.py AAPL MSFT GOOGL TSLA
+
+# 指定期間批量分析
+python main.py "AAPL,MSFT,GOOGL" --period 6mo
+```
+
+**2. 專用批量分析工具**
 ```bash
 python batch_analysis.py
 # 選擇 1-4 的預設組合，或選擇 5 自訂股票代碼
 ```
 
-**2. 自訂股票代碼**
+**3. 自訂股票代碼**
 ```bash
 python batch_analysis.py
 # 選擇模式 1 (互動式輸入)
@@ -108,6 +154,49 @@ python batch_analysis.py
 
 #### 批量分析輸出範例
 
+**主程式批量分析輸出**
+```
+=== AIStock 股票訊號分析系統 ===
+分析股票: AAPL, MSFT, GOOGL, TSLA
+資料期間: 1y
+----------------------------------------
+正在批量分析 4 支股票...
+
+[1/4] 分析 AAPL...
+  ✅ AAPL: $211.27 | 持有 | 強度: -5.0
+
+[2/4] 分析 MSFT...
+  ✅ MSFT: $512.57 | 持有 | 強度: -5.0
+
+[3/4] 分析 GOOGL...
+  ✅ GOOGL: $195.75 | 賣出 | 強度: -45.0
+
+[4/4] 分析 TSLA...
+  ✅ TSLA: $321.20 | 持有 | 強度: 5.0
+
+============================================================
+=== 分析結果摘要 ===
+============================================================
+股票代碼     價格           建議     強度       日期
+------------------------------------------------------------
+TSLA     $321.20      持有     5.0      2025-07-29
+AAPL     $211.27      持有     -5.0     2025-07-29
+MSFT     $512.57      持有     -5.0     2025-07-29
+GOOGL    $195.75      賣出     -45.0    2025-07-29
+
+📊 統計摘要:
+成功分析: 4/4 支股票
+買入建議: 0 支
+賣出建議: 1 支
+持有建議: 3 支
+
+強度統計:
+平均強度: -12.5
+最高強度: 5.0
+最低強度: -45.0
+```
+
+**專用批量分析工具輸出**
 ```
 === 批量股票分析 ===
 分析期間: 1y
@@ -173,8 +262,8 @@ visualizer.plot_candlestick_with_signals()
 AIStock-1/
 ├── README.md                 # 專案說明
 ├── requirements.txt          # Python 依賴套件
-├── main.py                  # 主程式
-├── batch_analysis.py        # 批量分析工具
+├── main.py                  # 主程式（支援單一/批量分析）
+├── batch_analysis.py        # 專用批量分析工具
 ├── src/                     # 核心模組
 │   ├── __init__.py
 │   ├── stock_analyzer.py    # 股票分析器
