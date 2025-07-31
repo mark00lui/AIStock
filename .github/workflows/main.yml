@@ -38,33 +38,38 @@ jobs:
         run: |
           python main.py 2330.TW 3019.TW 3008.TW 2382.TW --save-daily-report
 
-      # 步驟 5: 將報告重新命名為固定檔案名稱 (重要!)
-      # 這個指令會找到今天產生的報告，並將它命名為 report.html
-      - name: Rename report file 📝
+      # 步驟 5: 準備發佈內容
+      - name: Prepare deployment files 📂
         run: |
-          # 尋找 YYYY-MM-DD_report.html 格式的檔案
+          # 尋找今天產生的報告檔案
           report_file=$(find . -maxdepth 1 -name "*_report.html" -print -quit)
-          if [ -n "$report_file" ]; then
-            mv "$report_file" report.html
-            echo "Renamed $report_file to report.html"
-          else
+          
+          if [ -z "$report_file" ]; then
             echo "::error::Report file not found!"
             exit 1
           fi
+          
+          echo "Found report: $report_file"
+          
+          # 建立一個臨時的發佈目錄
+          mkdir -p deploy
+          
+          # 將最新的報告複製一份並命名為 latest_report.html
+          cp "$report_file" deploy/latest_report.html
+          
+          # 建立 reports 資料夾並將原始報告移入
+          mkdir -p deploy/reports
+          mv "$report_file" deploy/reports/
 
-      # 步驟 6: 將產生的 report.html 發佈到 gh-pages 分支
+      # 步驟 6: 將產生的檔案發佈到 gh-pages 分支
       - name: Deploy to GitHub Pages 🚀
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: . # 指定要發佈的目錄 (根目錄)
-          publish_branch: gh-pages # 發佈到 gh-pages 分支
-          # 只推送 report.html，避免其他檔案也被推送
-          force_orphan: true
+          # 指定要發佈的是我們剛剛建立的 deploy 資料夾
+          publish_dir: ./deploy
+          # 持續將更新推送到 gh-pages 分支
+          keep_files: true
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
-          # 指定只推送 report.html
-          # allow_empty_commit: true
-          # keep_files: false
-          # cname: example.com # 如果您有自訂網域
-          # 上面這幾行是進階設定，目前用不到
+          commit_message: "Docs: Deploy daily report"
