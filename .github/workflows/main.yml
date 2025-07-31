@@ -11,6 +11,8 @@ on:
 
 jobs:
   build-and-deploy:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       # 步驟 1: 取得您的專案原始碼
