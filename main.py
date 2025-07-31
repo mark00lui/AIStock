@@ -10,6 +10,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
 import argparse
+from datetime import datetime
 from stock_analyzer import StockAnalyzer
 from visualizer import StockVisualizer
 
@@ -20,6 +21,7 @@ def main():
                        help='資料期間 (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)')
     parser.add_argument('--plot', action='store_true', help='顯示圖表')
     parser.add_argument('--save', help='儲存圖表到指定路徑')
+    parser.add_argument('--save-daily-report', action='store_true', help='儲存每日報告，檔名格式為 YYYY-MM-DD_report.html')
     
     args = parser.parse_args()
     
@@ -50,12 +52,16 @@ def main():
             return
         
         # 如果需要繪圖
-        if args.plot or args.save:
+        if args.plot or args.save or args.save_daily_report:
             print("\n正在生成圖表...")
             visualizer = StockVisualizer(analyzer)
             
             # 創建綜合 HTML 報告
-            if args.save:
+            if args.save_daily_report:
+                # 生成每日報告檔名格式：YYYY-MM-DD_report.html
+                daily_report_path = f"{datetime.now().strftime('%Y-%m-%d')}_report.html"
+                visualizer.create_comprehensive_html_report(daily_report_path)
+            elif args.save:
                 save_path = args.save
                 if not save_path.endswith('.html'):
                     save_path += '.html'
@@ -153,11 +159,15 @@ def main():
                 print(f"最低強度: {min(strengths):.1f}")
         
         # 生成 HTML 報告
-        if analyzers and (args.plot or args.save):
+        if analyzers and (args.plot or args.save or args.save_daily_report):
             print("\n正在生成批量分析 HTML 報告...")
             visualizer = StockVisualizer(analyzers[0])  # 使用第一個分析器創建視覺化器
             
-            if args.save:
+            if args.save_daily_report:
+                # 生成每日報告檔名格式：YYYY-MM-DD_report.html
+                daily_report_path = f"{datetime.now().strftime('%Y-%m-%d')}_report.html"
+                visualizer.create_batch_html_report(analyzers, daily_report_path)
+            elif args.save:
                 save_path = args.save
                 if not save_path.endswith('.html'):
                     save_path += '.html'

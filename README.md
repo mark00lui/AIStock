@@ -76,6 +76,9 @@ python main.py AAPL --period 6mo --plot
 # 儲存圖表
 python main.py AAPL --save analysis_result.html
 
+# 生成每日報告
+python main.py AAPL --save-daily-report
+
 # 台股分析
 python main.py 2330.TW --period 1y
 ```
@@ -96,6 +99,9 @@ python main.py AAPL MSFT GOOGL --period 6mo
 
 # 批量分析並顯示圖表（僅第一支股票）
 python main.py AAPL MSFT GOOGL --plot
+
+# 批量分析並生成每日報告
+python main.py "AAPL,MSFT,GOOGL" --save-daily-report
 ```
 
 ### 股票原始名稱功能
@@ -322,6 +328,15 @@ python main.py AAPL MSFT GOOGL TSLA --save batch_report.html
 
 # 或使用逗號分隔
 python main.py "AAPL,MSFT,GOOGL" --save batch_report.html
+```
+
+#### 每日報告模式
+```bash
+# 生成每日報告（檔名格式：YYYY-MM-DD_report.html）
+python main.py AAPL --save-daily-report
+
+# 批量分析每日報告
+python main.py "AAPL,MSFT,GOOGL" --save-daily-report
 ```
 
 #### HTML 報告特色
