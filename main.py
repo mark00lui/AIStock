@@ -37,14 +37,37 @@ def main():
     # 移除重複的股票代碼
     symbols = list(dict.fromkeys(symbols))
     
-    print("=== AIStock 股票訊號分析系統 ===")
-    print(f"分析股票: {', '.join(symbols)}")
+    # 驗證股票代碼
+    valid_symbols = []
+    invalid_symbols = []
+    
+    print("=== 股票代碼驗證 ===")
+    for symbol in symbols:
+        is_valid, error_msg = StockAnalyzer.validate_symbol(symbol)
+        if is_valid:
+            symbol_info = StockAnalyzer.get_symbol_info(symbol)
+            print(f"✅ {symbol:<10} - {symbol_info['exchange']:<15} - {symbol_info['market']}")
+            valid_symbols.append(symbol)
+        else:
+            print(f"❌ {symbol:<10} - {error_msg}")
+            invalid_symbols.append(symbol)
+    
+    if invalid_symbols:
+        print(f"\n警告: 發現 {len(invalid_symbols)} 個無效的股票代碼，將被忽略")
+        print(f"無效股票代碼: {', '.join(invalid_symbols)}")
+    
+    if not valid_symbols:
+        print("錯誤: 沒有有效的股票代碼可供分析")
+        return
+    
+    print(f"\n=== AIStock 股票訊號分析系統 ===")
+    print(f"分析股票: {', '.join(valid_symbols)}")
     print(f"資料期間: {args.period}")
     print("-" * 40)
     
     # 如果只有一支股票，使用原有邏輯
-    if len(symbols) == 1:
-        symbol = symbols[0]
+    if len(valid_symbols) == 1:
+        symbol = valid_symbols[0]
         analyzer = StockAnalyzer(symbol, args.period)
         
         if not analyzer.run_analysis():
@@ -71,13 +94,13 @@ def main():
     
     # 如果有多支股票，執行批量分析
     else:
-        print(f"正在批量分析 {len(symbols)} 支股票...")
+        print(f"正在批量分析 {len(valid_symbols)} 支股票...")
         
         results = []
         analyzers = []  # 儲存分析器實例用於生成 HTML 報告
         
-        for i, symbol in enumerate(symbols, 1):
-            print(f"\n[{i}/{len(symbols)}] 分析 {symbol}...")
+        for i, symbol in enumerate(valid_symbols, 1):
+            print(f"\n[{i}/{len(valid_symbols)}] 分析 {symbol}...")
             
             try:
                 analyzer = StockAnalyzer(symbol, args.period)
@@ -146,7 +169,7 @@ def main():
                     signal_counts[result['signal']] = signal_counts.get(result['signal'], 0) + 1
             
             print(f"\n📊 統計摘要:")
-            print(f"成功分析: {successful_count}/{len(symbols)} 支股票")
+            print(f"成功分析: {successful_count}/{len(valid_symbols)} 支股票")
             print(f"買入建議: {signal_counts.get('買入', 0)} 支")
             print(f"賣出建議: {signal_counts.get('賣出', 0)} 支")
             print(f"持有建議: {signal_counts.get('持有', 0)} 支")

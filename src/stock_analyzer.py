@@ -4,6 +4,11 @@ import numpy as np
 import ta
 from datetime import datetime, timedelta
 import warnings
+import time
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import re
 warnings.filterwarnings('ignore')
 
 class StockAnalyzer:
@@ -21,33 +26,96 @@ class StockAnalyzer:
         self.signals = None
         self.long_name = None  # 股票原始名稱
         
+        # 設置重試策略
+        self._setup_retry_strategy()
+        
+    def _setup_retry_strategy(self):
+        """設置重試策略"""
+        # 創建一個 session 並設置重試策略
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        # 注意: yfinance 會自動使用系統的 requests session
+        
     def fetch_data(self):
         """獲取股票資料"""
-        try:
-            ticker = yf.Ticker(self.symbol)
-            
-            # 獲取股票資訊
-            info = ticker.info
-            if info and 'longName' in info and info['longName']:
-                self.long_name = info['longName']
-            elif info and 'shortName' in info and info['shortName']:
-                self.long_name = info['shortName']
-            else:
-                self.long_name = self.symbol  # 如果無法獲取名稱，使用股票代碼
-            
-            # 獲取歷史資料
-            self.data = ticker.history(period=self.period)
-            
-            if self.data is None or len(self.data) == 0:
-                print(f"無法獲取 {self.symbol} 的資料，請檢查股票代碼是否正確")
-                return False
-            
-            print(f"成功獲取 {self.symbol} ({self.long_name}) 的資料，共 {len(self.data)} 筆記錄")
-            return True
-        except Exception as e:
-            print(f"獲取資料失敗: {e}")
-            self.long_name = self.symbol  # 發生錯誤時使用股票代碼
-            return False
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"嘗試獲取 {self.symbol} 資料 (第 {attempt + 1} 次)...")
+                
+                # 創建 ticker 對象
+                ticker = yf.Ticker(self.symbol)
+                
+                # 獲取股票資訊
+                try:
+                    info = ticker.info
+                    if info and 'longName' in info and info['longName']:
+                        self.long_name = info['longName']
+                    elif info and 'shortName' in info and info['shortName']:
+                        self.long_name = info['shortName']
+                    else:
+                        self.long_name = self.symbol  # 如果無法獲取名稱，使用股票代碼
+                except Exception as info_error:
+                    print(f"獲取股票資訊失敗: {info_error}")
+                    self.long_name = self.symbol
+                
+                # 獲取歷史資料
+                print(f"正在下載 {self.symbol} 的歷史資料 (期間: {self.period})...")
+                self.data = ticker.history(period=self.period)
+                
+                if self.data is None or len(self.data) == 0:
+                    print(f"無法獲取 {self.symbol} 的資料，請檢查股票代碼是否正確")
+                    if attempt < max_retries - 1:
+                        print(f"等待 {retry_delay} 秒後重試...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # 指數退避
+                        continue
+                    return False
+                
+                # 檢查數據質量
+                if len(self.data) < 20:
+                    print(f"警告: {self.symbol} 只有 {len(self.data)} 筆記錄，可能數據不足")
+                
+                print(f"成功獲取 {self.symbol} ({self.long_name}) 的資料，共 {len(self.data)} 筆記錄")
+                print(f"資料期間: {self.data.index[0].strftime('%Y-%m-%d')} 到 {self.data.index[-1].strftime('%Y-%m-%d')}")
+                print(f"最新收盤價: ${self.data['Close'].iloc[-1]:.2f}")
+                
+                return True
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"獲取 {self.symbol} 資料失敗 (第 {attempt + 1} 次): {error_msg}")
+                
+                # 針對特定錯誤提供更詳細的診斷
+                if "possibly delisted" in error_msg.lower():
+                    print(f"  → {self.symbol} 可能已退市或暫停交易")
+                elif "expecting value" in error_msg.lower():
+                    print(f"  → {self.symbol} API 回應格式錯誤，可能是網路問題或服務暫時不可用")
+                elif "timeout" in error_msg.lower():
+                    print(f"  → {self.symbol} 請求超時，可能是網路連接問題")
+                elif "connection" in error_msg.lower():
+                    print(f"  → {self.symbol} 連接失敗，可能是網路問題")
+                
+                if attempt < max_retries - 1:
+                    print(f"等待 {retry_delay} 秒後重試...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # 指數退避
+                else:
+                    print(f"已重試 {max_retries} 次，放棄獲取 {self.symbol} 的資料")
+                    self.long_name = self.symbol
+                    return False
+        
+        return False
     
     def calculate_technical_indicators(self):
         """計算技術指標"""
@@ -218,4 +286,75 @@ class StockAnalyzer:
         print(f"建議動作: {current_signal['signal']}")
         print(f"訊號強度: {current_signal['strength']}")
         
-        return True 
+        return True
+    
+    @staticmethod
+    def validate_symbol(symbol):
+        """
+        驗證股票代碼格式
+        
+        Args:
+            symbol (str): 股票代碼
+            
+        Returns:
+            tuple: (is_valid, error_message)
+        """
+        if not symbol or not isinstance(symbol, str):
+            return False, "股票代碼不能為空"
+        
+        symbol = symbol.strip().upper()
+        
+        # 基本格式檢查
+        if len(symbol) < 1 or len(symbol) > 10:
+            return False, "股票代碼長度不正確"
+        
+        # 檢查是否包含非法字符
+        if not re.match(r'^[A-Z0-9.]+$', symbol):
+            return False, "股票代碼包含非法字符"
+        
+        return True, ""
+    
+    @staticmethod
+    def get_symbol_info(symbol):
+        """
+        獲取股票代碼的基本資訊
+        
+        Args:
+            symbol (str): 股票代碼
+            
+        Returns:
+            dict: 股票代碼資訊
+        """
+        is_valid, error_msg = StockAnalyzer.validate_symbol(symbol)
+        
+        info = {
+            'symbol': symbol,
+            'is_valid': is_valid,
+            'error': error_msg if not is_valid else None,
+            'exchange': None,
+            'market': None
+        }
+        
+        if not is_valid:
+            return info
+        
+        # 根據後綴判斷交易所
+        if symbol.endswith('.TW'):
+            info['exchange'] = 'TWSE'
+            info['market'] = 'Taiwan'
+        elif symbol.endswith('.HK'):
+            info['exchange'] = 'HKEX'
+            info['market'] = 'Hong Kong'
+        elif symbol.endswith('.T'):
+            info['exchange'] = 'TSE'
+            info['market'] = 'Tokyo'
+        elif '.' in symbol:
+            # 其他國際股票
+            info['exchange'] = 'International'
+            info['market'] = 'Global'
+        else:
+            # 預設為美股
+            info['exchange'] = 'NYSE/NASDAQ'
+            info['market'] = 'US'
+        
+        return info 
