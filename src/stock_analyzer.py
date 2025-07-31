@@ -19,21 +19,34 @@ class StockAnalyzer:
         self.period = period
         self.data = None
         self.signals = None
+        self.long_name = None  # 股票原始名稱
         
     def fetch_data(self):
         """獲取股票資料"""
         try:
             ticker = yf.Ticker(self.symbol)
+            
+            # 獲取股票資訊
+            info = ticker.info
+            if info and 'longName' in info and info['longName']:
+                self.long_name = info['longName']
+            elif info and 'shortName' in info and info['shortName']:
+                self.long_name = info['shortName']
+            else:
+                self.long_name = self.symbol  # 如果無法獲取名稱，使用股票代碼
+            
+            # 獲取歷史資料
             self.data = ticker.history(period=self.period)
             
             if self.data is None or len(self.data) == 0:
                 print(f"無法獲取 {self.symbol} 的資料，請檢查股票代碼是否正確")
                 return False
             
-            print(f"成功獲取 {self.symbol} 的資料，共 {len(self.data)} 筆記錄")
+            print(f"成功獲取 {self.symbol} ({self.long_name}) 的資料，共 {len(self.data)} 筆記錄")
             return True
         except Exception as e:
             print(f"獲取資料失敗: {e}")
+            self.long_name = self.symbol  # 發生錯誤時使用股票代碼
             return False
     
     def calculate_technical_indicators(self):
@@ -152,6 +165,8 @@ class StockAnalyzer:
         signal_map = {1: "買入", -1: "賣出", 0: "持有"}
         
         return {
+            'symbol': self.symbol,
+            'long_name': self.long_name,
             'date': latest.name.strftime('%Y-%m-%d'),
             'price': round(latest['Price'], 2),
             'signal': signal_map[latest['Signal']],
@@ -198,6 +213,7 @@ class StockAnalyzer:
         
         print("\n=== 分析結果 ===")
         print(f"股票代碼: {self.symbol}")
+        print(f"股票名稱: {self.long_name}")
         print(f"當前價格: ${current_signal['price']}")
         print(f"建議動作: {current_signal['signal']}")
         print(f"訊號強度: {current_signal['strength']}")

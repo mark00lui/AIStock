@@ -12,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 import argparse
 from stock_analyzer import StockAnalyzer
 from visualizer import StockVisualizer
-import argparse
 
 def main():
     parser = argparse.ArgumentParser(description='AIStock 股票訊號分析系統')
@@ -87,7 +86,7 @@ def main():
                         'date': current_signal['date']
                     })
                     analyzers.append(analyzer)  # 添加到分析器列表
-                    print(f"  ✅ {symbol}: ${current_signal['price']:.2f} | {current_signal['signal']} | 強度: {current_signal['strength']}")
+                    print(f"  ✅ {symbol} ({analyzer.long_name}): ${current_signal['price']:.2f} | {current_signal['signal']} | 強度: {current_signal['strength']}")
                 else:
                     print(f"  ❌ {symbol}: 分析失敗")
                     results.append({
@@ -119,14 +118,18 @@ def main():
             successful_results.sort(key=lambda x: x['strength'], reverse=True)
         
         # 顯示表格
-        print(f"{'股票代碼':<8} {'價格':<12} {'建議':<6} {'強度':<8} {'日期':<12}")
-        print("-" * 60)
+        print(f"{'股票代碼':<8} {'股票名稱':<20} {'價格':<12} {'建議':<6} {'強度':<8} {'日期':<12}")
+        print("-" * 70)
         
         for result in results:
+            # 獲取對應分析器的股票名稱
+            analyzer = next((a for a in analyzers if a.symbol == result['symbol']), None)
+            stock_name = analyzer.long_name if analyzer else result['symbol']
+            
             if result['signal'] in ['買入', '賣出', '持有']:
-                print(f"{result['symbol']:<8} ${result['price']:<11.2f} {result['signal']:<6} {result['strength']:<8.1f} {result['date']:<12}")
+                print(f"{result['symbol']:<8} {stock_name:<20} ${result['price']:<11.2f} {result['signal']:<6} {result['strength']:<8.1f} {result['date']:<12}")
             else:
-                print(f"{result['symbol']:<8} {'N/A':<12} {result['signal']:<6} {'N/A':<8} {result['date']:<12}")
+                print(f"{result['symbol']:<8} {stock_name:<20} {'N/A':<12} {result['signal']:<6} {'N/A':<8} {result['date']:<12}")
         
         # 統計摘要
         successful_count = len([r for r in results if r['signal'] in ['買入', '賣出', '持有']])

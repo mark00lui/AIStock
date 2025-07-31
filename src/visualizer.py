@@ -250,6 +250,7 @@ class StockVisualizer:
             <thead>
                 <tr>
                     <th>股票代碼</th>
+                    <th>股票名稱</th>
                     <th>當前價格</th>
                     <th>建議動作</th>
                     <th>訊號強度</th>
@@ -264,7 +265,8 @@ class StockVisualizer:
             signal_class = f"signal-{result['signal']['signal'].lower()}"
             html_content += f"""
                 <tr>
-                    <td><strong>{result['symbol']}</strong></td>
+                    <td><strong>{result['signal']['symbol']}</strong></td>
+                    <td>{result['signal']['long_name']}</td>
                     <td>${result['signal']['price']:.2f}</td>
                     <td class="{signal_class}">{result['signal']['signal']}</td>
                     <td>{result['signal']['strength']:.1f}</td>
@@ -675,11 +677,19 @@ class StockVisualizer:
 <body>
     <div class="container">
         <div class="header">
-            <h1>{self.analyzer.symbol} 股票分析報告</h1>
+            <h1>{self.analyzer.symbol} ({self.analyzer.long_name}) 股票分析報告</h1>
             <p>生成時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
         </div>
         
         <div class="summary-grid">
+            <div class="summary-card">
+                <h3>股票代碼</h3>
+                <div class="value">{self.analyzer.symbol}</div>
+            </div>
+            <div class="summary-card">
+                <h3>股票名稱</h3>
+                <div class="value">{self.analyzer.long_name}</div>
+            </div>
             <div class="summary-card signal-{current_signal['signal'].lower()}">
                 <h3>當前價格</h3>
                 <div class="value">${current_signal['price']:.2f}</div>
