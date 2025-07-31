@@ -47,41 +47,7 @@ class StockVisualizer:
             print("沒有有效的分析結果")
             return
         
-        # 創建綜合圖表
-        fig = make_subplots(
-            rows=len(all_results), cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.05,
-            subplot_titles=[f"{result['symbol']} 訊號強度" for result in all_results]
-        )
-        
-        # 為每支股票添加訊號強度圖
-        for i, result in enumerate(all_results, 1):
-            analyzer = result['analyzer']
-            
-            fig.add_trace(
-                go.Scatter(
-                    x=analyzer.signals.index,
-                    y=analyzer.signals['Strength'],
-                    mode='lines',
-                    name=f"{analyzer.symbol} 訊號強度",
-                    line=dict(color='blue', width=2)
-                ),
-                row=i, col=1
-            )
-            
-            # 添加閾值線
-            fig.add_hline(y=30, line_dash="dash", line_color="green", row=i, col=1)
-            fig.add_hline(y=-30, line_dash="dash", line_color="red", row=i, col=1)
-            fig.add_hline(y=0, line_dash="dot", line_color="black", row=i, col=1)
-        
-        # 更新佈局
-        fig.update_layout(
-            title=f'批量股票分析報告 - {len(all_results)} 支股票',
-            xaxis_rangeslider_visible=False,
-            height=300 * len(all_results),
-            showlegend=True
-        )
+        # 統計摘要
         
         # 統計摘要
         buy_count = len([r for r in all_results if r['signal']['signal'] == '買入'])
@@ -194,6 +160,48 @@ class StockVisualizer:
             border-radius: 10px;
             overflow: hidden;
         }}
+        .collapsible-chart {{
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        .chart-header {{
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s;
+        }}
+        .chart-header:hover {{
+            background-color: #e9ecef;
+        }}
+        .chart-header h3 {{
+            margin: 0;
+            color: #007bff;
+            font-size: 1.2em;
+        }}
+        .chart-toggle {{
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            color: #007bff;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }}
+        .chart-toggle.expanded {{
+            transform: rotate(180deg);
+        }}
+        .chart-content {{
+            display: none;
+            padding: 20px;
+        }}
+        .chart-content.show {{
+            display: block;
+        }}
         .footer {{
             text-align: center;
             margin-top: 30px;
@@ -208,6 +216,19 @@ class StockVisualizer:
             padding: 15px;
             border-radius: 5px;
             margin: 20px 0;
+        }}
+        .toggle-all-btn {{
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 20px 0;
+            font-size: 1em;
+        }}
+        .toggle-all-btn:hover {{
+            background-color: #0056b3;
         }}
     </style>
 </head>
@@ -255,13 +276,14 @@ class StockVisualizer:
                     <th>建議動作</th>
                     <th>訊號強度</th>
                     <th>分析日期</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody>
 """
         
         # 添加每支股票的結果
-        for result in all_results:
+        for i, result in enumerate(all_results):
             signal_class = f"signal-{result['signal']['signal'].lower()}"
             html_content += f"""
                 <tr>
@@ -271,6 +293,7 @@ class StockVisualizer:
                     <td class="{signal_class}">{result['signal']['signal']}</td>
                     <td>{result['signal']['strength']:.1f}</td>
                     <td>{result['signal']['date']}</td>
+                    <td><button class="toggle-all-btn" onclick="toggleChart({i})">查看詳細分析</button></td>
                 </tr>
 """
         
@@ -278,12 +301,164 @@ class StockVisualizer:
             </tbody>
         </table>
         
-        <div class="chart-container">
-            {fig.to_html(full_html=False, include_plotlyjs=True)}
+        <div style="margin: 30px 0;">
+            <button class="toggle-all-btn" onclick="toggleAllCharts()">展開/收合所有詳細分析</button>
+        </div>
+        
+        <div id="charts-section">
+"""
+        
+        # 為每個股票創建可折疊的圖表
+        for i, result in enumerate(all_results):
+            analyzer = result['analyzer']
+            # 創建該股票的圖表
+            stock_fig = go.Figure()
+            
+            # 添加訊號強度圖
+            stock_fig.add_trace(go.Scatter(
+                x=analyzer.signals.index,
+                y=analyzer.signals['Strength'],
+                mode='lines+markers',
+                name='訊號強度',
+                line=dict(color='purple', width=2),
+                yaxis='y'
+            ))
+            
+            # 添加技術指標綜合分析圖
+            stock_fig.add_trace(go.Scatter(
+                x=analyzer.data.index,
+                y=analyzer.data['Close'],
+                mode='lines',
+                name='股價',
+                line=dict(color='blue', width=2),
+                yaxis='y2'
+            ))
+            
+            stock_fig.add_trace(go.Scatter(
+                x=analyzer.data.index,
+                y=analyzer.data['RSI'],
+                mode='lines',
+                name='RSI',
+                line=dict(color='orange', width=1),
+                yaxis='y3'
+            ))
+            
+            stock_fig.add_trace(go.Scatter(
+                x=analyzer.data.index,
+                y=analyzer.data['MACD'],
+                mode='lines',
+                name='MACD',
+                line=dict(color='green', width=1),
+                yaxis='y4'
+            ))
+            
+            stock_fig.add_trace(go.Scatter(
+                x=analyzer.data.index,
+                y=analyzer.data['BB_Upper'],
+                mode='lines',
+                name='布林上軌',
+                line=dict(color='red', width=1, dash='dash'),
+                yaxis='y2'
+            ))
+            
+            stock_fig.add_trace(go.Scatter(
+                x=analyzer.data.index,
+                y=analyzer.data['BB_Lower'],
+                mode='lines',
+                name='布林下軌',
+                line=dict(color='red', width=1, dash='dash'),
+                yaxis='y2'
+            ))
+            
+            # 設定多軸
+            stock_fig.update_layout(
+                title=f"{result['signal']['symbol']} ({result['signal']['long_name']}) - 技術指標綜合分析",
+                height=400,
+                yaxis=dict(title="訊號強度", range=[-50, 50]),
+                yaxis2=dict(title="股價", side="right", overlaying="y"),
+                yaxis3=dict(title="RSI", side="right", overlaying="y", range=[0, 100]),
+                yaxis4=dict(title="MACD", side="right", overlaying="y"),
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            
+            # 添加閾值線
+            stock_fig.add_shape(
+                type="line", x0=analyzer.data.index[0], x1=analyzer.data.index[-1],
+                y0=30, y1=30, line=dict(color="red", width=1, dash="dash"),
+                yref="y3"
+            )
+            stock_fig.add_shape(
+                type="line", x0=analyzer.data.index[0], x1=analyzer.data.index[-1],
+                y0=70, y1=70, line=dict(color="red", width=1, dash="dash"),
+                yref="y3"
+            )
+            stock_fig.add_shape(
+                type="line", x0=analyzer.signals.index[0], x1=analyzer.signals.index[-1],
+                y0=20, y1=20, line=dict(color="orange", width=1, dash="dash"),
+                yref="y"
+            )
+            stock_fig.add_shape(
+                type="line", x0=analyzer.signals.index[0], x1=analyzer.signals.index[-1],
+                y0=-20, y1=-20, line=dict(color="orange", width=1, dash="dash"),
+                yref="y"
+            )
+            
+            html_content += f"""
+            <div class="collapsible-chart" id="chart-{i}">
+                <div class="chart-header" onclick="toggleChart({i})">
+                    <h3>{result['signal']['symbol']} ({result['signal']['long_name']}) - 技術指標綜合分析</h3>
+                    <button class="chart-toggle" id="toggle-{i}">▼</button>
+                </div>
+                <div class="chart-content" id="content-{i}">
+                    {stock_fig.to_html(full_html=False, include_plotlyjs=True)}
+                </div>
+            </div>
+"""
+        
+        html_content += f"""
         </div>
         
         <div class="risk-warning">
             <strong>⚠️ 風險提醒:</strong> 本分析報告僅供學習和研究使用，不構成投資建議。
+        </div>
+        
+        <script>
+            // 控制單個圖表的顯示/隱藏
+            function toggleChart(index) {{
+                const content = document.getElementById(`content-${{index}}`);
+                const toggle = document.getElementById(`toggle-${{index}}`);
+                
+                if (content.classList.contains('show')) {{
+                    content.classList.remove('show');
+                    toggle.textContent = '▼';
+                    toggle.classList.remove('expanded');
+                }} else {{
+                    content.classList.add('show');
+                    toggle.textContent = '▲';
+                    toggle.classList.add('expanded');
+                }}
+            }}
+            
+            // 控制所有圖表的顯示/隱藏
+            function toggleAllCharts() {{
+                const contents = document.querySelectorAll('.chart-content');
+                const toggles = document.querySelectorAll('.chart-toggle');
+                const allShown = Array.from(contents).every(content => content.classList.contains('show'));
+                
+                contents.forEach((content, index) => {{
+                    if (allShown) {{
+                        content.classList.remove('show');
+                        toggles[index].textContent = '▼';
+                        toggles[index].classList.remove('expanded');
+                    }} else {{
+                        content.classList.add('show');
+                        toggles[index].textContent = '▲';
+                        toggles[index].classList.add('expanded');
+                    }}
+                }});
+            }}
+        </script>
             股票投資有風險，請謹慎決策，建議結合基本面分析進行投資決策。
         </div>
         
@@ -330,7 +505,7 @@ class StockVisualizer:
         
         # 創建綜合圖表
         fig = make_subplots(
-            rows=6, cols=1,
+            rows=7, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.03,
             subplot_titles=(
@@ -339,9 +514,10 @@ class StockVisualizer:
                 'MACD', 
                 'RSI', 
                 '隨機指標',
-                '訊號強度'
+                '訊號強度',
+                '技術指標綜合分析'
             ),
-            row_width=[0.25, 0.15, 0.15, 0.15, 0.15, 0.15]
+            row_width=[0.20, 0.12, 0.12, 0.12, 0.12, 0.12, 0.20]
         )
         
         # 1. K線圖與訊號
@@ -542,11 +718,124 @@ class StockVisualizer:
         fig.add_hline(y=-30, line_dash="dash", line_color="red", row=6, col=1)
         fig.add_hline(y=0, line_dash="dot", line_color="black", row=6, col=1)
         
+        # 7. 技術指標綜合分析 - 將股價、RSI、MACD、布林通道疊加顯示
+        # 股價（左軸）
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['Close'],
+                mode='lines',
+                name='股價',
+                line=dict(color='black', width=2),
+                yaxis='y7'
+            ),
+            row=7, col=1
+        )
+        
+        # RSI（右軸1）
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['RSI'],
+                mode='lines',
+                name='RSI',
+                line=dict(color='purple', width=1),
+                yaxis='y8'
+            ),
+            row=7, col=1
+        )
+        
+        # MACD（右軸2）
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['MACD'],
+                mode='lines',
+                name='MACD',
+                line=dict(color='blue', width=1),
+                yaxis='y9'
+            ),
+            row=7, col=1
+        )
+        
+        # 布林通道上軌
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['BB_Upper'],
+                mode='lines',
+                name='布林上軌',
+                line=dict(color='gray', width=1, dash='dash'),
+                yaxis='y7'
+            ),
+            row=7, col=1
+        )
+        
+        # 布林通道下軌
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['BB_Lower'],
+                mode='lines',
+                name='布林下軌',
+                line=dict(color='gray', width=1, dash='dash'),
+                fill='tonexty',
+                yaxis='y7'
+            ),
+            row=7, col=1
+        )
+        
+        # 訊號強度（右軸3）
+        fig.add_trace(
+            go.Scatter(
+                x=self.signals.index,
+                y=self.signals['Strength'],
+                mode='lines',
+                name='訊號強度',
+                line=dict(color='orange', width=2),
+                yaxis='y10'
+            ),
+            row=7, col=1
+        )
+        
+        # 添加閾值線 - 修正版本，使用 add_shape 而不是 add_hline
+        # RSI 超買超賣線
+        fig.add_shape(
+            type="line",
+            x0=self.data.index[0], x1=self.data.index[-1],
+            y0=70, y1=70,
+            line=dict(color="red", width=1, dash="dash"),
+            yref="y8"
+        )
+        fig.add_shape(
+            type="line",
+            x0=self.data.index[0], x1=self.data.index[-1],
+            y0=30, y1=30,
+            line=dict(color="green", width=1, dash="dash"),
+            yref="y8"
+        )
+        
+        # 訊號強度閾值線
+        fig.add_shape(
+            type="line",
+            x0=self.signals.index[0], x1=self.signals.index[-1],
+            y0=30, y1=30,
+            line=dict(color="green", width=1, dash="dash"),
+            yref="y10"
+        )
+        fig.add_shape(
+            type="line",
+            x0=self.signals.index[0], x1=self.signals.index[-1],
+            y0=-30, y1=-30,
+            line=dict(color="red", width=1, dash="dash"),
+            yref="y10"
+        )
+        
         # 更新佈局
         fig.update_layout(
             title=f'{self.analyzer.symbol} 綜合技術分析報告',
             xaxis_rangeslider_visible=False,
-            height=1200,
+            height=1400,
             showlegend=True,
             legend=dict(
                 orientation="h",
@@ -555,6 +844,14 @@ class StockVisualizer:
                 xanchor="right",
                 x=1
             )
+        )
+        
+        # 設定多個Y軸 - 修正版本
+        fig.update_layout(
+            yaxis7=dict(title="股價", side="left"),
+            yaxis8=dict(title="RSI", side="right", overlaying="y7", range=[0, 100]),
+            yaxis9=dict(title="MACD", side="right", overlaying="y7"),
+            yaxis10=dict(title="訊號強度", side="right", overlaying="y7", range=[-50, 50])
         )
         
         # 創建 HTML 內容
