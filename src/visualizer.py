@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 import seaborn as sns
+from datetime import datetime
 
 class StockVisualizer:
     def __init__(self, analyzer):
@@ -17,6 +18,761 @@ class StockVisualizer:
         self.data = analyzer.data
         self.signals = analyzer.signals
         
+    def create_batch_html_report(self, analyzers, save_path=None):
+        """
+        為多支股票創建綜合 HTML 報告
+        
+        Args:
+            analyzers: StockAnalyzer 實例列表
+            save_path: 保存路徑
+        """
+        if not analyzers:
+            print("沒有提供分析器")
+            return
+        
+        # 獲取所有股票的數據
+        all_results = []
+        for analyzer in analyzers:
+            if analyzer.data is not None and analyzer.signals is not None:
+                current_signal = analyzer.get_current_signal()
+                summary = analyzer.get_signal_summary()
+                all_results.append({
+                    'symbol': analyzer.symbol,
+                    'signal': current_signal,
+                    'summary': summary,
+                    'analyzer': analyzer
+                })
+        
+        if not all_results:
+            print("沒有有效的分析結果")
+            return
+        
+        # 創建綜合圖表
+        fig = make_subplots(
+            rows=len(all_results), cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.05,
+            subplot_titles=[f"{result['symbol']} 訊號強度" for result in all_results]
+        )
+        
+        # 為每支股票添加訊號強度圖
+        for i, result in enumerate(all_results, 1):
+            analyzer = result['analyzer']
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=analyzer.signals.index,
+                    y=analyzer.signals['Strength'],
+                    mode='lines',
+                    name=f"{analyzer.symbol} 訊號強度",
+                    line=dict(color='blue', width=2)
+                ),
+                row=i, col=1
+            )
+            
+            # 添加閾值線
+            fig.add_hline(y=30, line_dash="dash", line_color="green", row=i, col=1)
+            fig.add_hline(y=-30, line_dash="dash", line_color="red", row=i, col=1)
+            fig.add_hline(y=0, line_dash="dot", line_color="black", row=i, col=1)
+        
+        # 更新佈局
+        fig.update_layout(
+            title=f'批量股票分析報告 - {len(all_results)} 支股票',
+            xaxis_rangeslider_visible=False,
+            height=300 * len(all_results),
+            showlegend=True
+        )
+        
+        # 統計摘要
+        buy_count = len([r for r in all_results if r['signal']['signal'] == '買入'])
+        sell_count = len([r for r in all_results if r['signal']['signal'] == '賣出'])
+        hold_count = len([r for r in all_results if r['signal']['signal'] == '持有'])
+        
+        avg_strength = sum([r['signal']['strength'] for r in all_results]) / len(all_results)
+        max_strength = max([r['signal']['strength'] for r in all_results])
+        min_strength = min([r['signal']['strength'] for r in all_results])
+        
+        # 創建 HTML 內容
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量股票分析報告</title>
+    <style>
+        body {{
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+        }}
+        .header h1 {{
+            color: #007bff;
+            margin: 0;
+            font-size: 2.5em;
+        }}
+        .header p {{
+            color: #666;
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+        }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        .summary-card {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }}
+        .summary-card h3 {{
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }}
+        .summary-card .value {{
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }}
+        .results-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }}
+        .results-table th {{
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }}
+        .results-table td {{
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }}
+        .results-table tr:nth-child(even) {{
+            background-color: #f8f9fa;
+        }}
+        .signal-buy {{
+            color: #28a745;
+            font-weight: bold;
+        }}
+        .signal-sell {{
+            color: #dc3545;
+            font-weight: bold;
+        }}
+        .signal-hold {{
+            color: #6c757d;
+            font-weight: bold;
+        }}
+        .chart-container {{
+            margin: 30px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+        }}
+        .risk-warning {{
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>批量股票分析報告</h1>
+            <p>分析股票: {', '.join([r['symbol'] for r in all_results])}</p>
+            <p>生成時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+        
+        <div class="summary-grid">
+            <div class="summary-card">
+                <h3>分析股票數</h3>
+                <div class="value">{len(all_results)}</div>
+            </div>
+            <div class="summary-card">
+                <h3>買入建議</h3>
+                <div class="value">{buy_count}</div>
+            </div>
+            <div class="summary-card">
+                <h3>賣出建議</h3>
+                <div class="value">{sell_count}</div>
+            </div>
+            <div class="summary-card">
+                <h3>持有建議</h3>
+                <div class="value">{hold_count}</div>
+            </div>
+            <div class="summary-card">
+                <h3>平均強度</h3>
+                <div class="value">{avg_strength:.1f}</div>
+            </div>
+            <div class="summary-card">
+                <h3>強度範圍</h3>
+                <div class="value">{min_strength:.1f} ~ {max_strength:.1f}</div>
+            </div>
+        </div>
+        
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>股票代碼</th>
+                    <th>當前價格</th>
+                    <th>建議動作</th>
+                    <th>訊號強度</th>
+                    <th>分析日期</th>
+                </tr>
+            </thead>
+            <tbody>
+"""
+        
+        # 添加每支股票的結果
+        for result in all_results:
+            signal_class = f"signal-{result['signal']['signal'].lower()}"
+            html_content += f"""
+                <tr>
+                    <td><strong>{result['symbol']}</strong></td>
+                    <td>${result['signal']['price']:.2f}</td>
+                    <td class="{signal_class}">{result['signal']['signal']}</td>
+                    <td>{result['signal']['strength']:.1f}</td>
+                    <td>{result['signal']['date']}</td>
+                </tr>
+"""
+        
+        html_content += f"""
+            </tbody>
+        </table>
+        
+        <div class="chart-container">
+            {fig.to_html(full_html=False, include_plotlyjs=True)}
+        </div>
+        
+        <div class="risk-warning">
+            <strong>⚠️ 風險提醒:</strong> 本分析報告僅供學習和研究使用，不構成投資建議。
+            股票投資有風險，請謹慎決策，建議結合基本面分析進行投資決策。
+        </div>
+        
+        <div class="footer">
+            <p>AIStock 股票訊號分析系統 | 生成於 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        
+        # 保存 HTML 文件
+        if save_path:
+            if not save_path.endswith('.html'):
+                save_path += '.html'
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"批量分析報告已儲存至: {save_path}")
+            return save_path
+        else:
+            # 生成預設檔名
+            symbols_str = '_'.join([r['symbol'] for r in all_results])
+            default_path = f"batch_analysis_{symbols_str}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            with open(default_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"批量分析報告已儲存至: {default_path}")
+            return default_path
+
+    def create_comprehensive_html_report(self, save_path=None):
+        """
+        創建綜合 HTML 報告，包含所有圖表和數據
+        所有內容都在單一 HTML 文件中，不使用圖片
+        """
+        if self.data is None or self.signals is None:
+            print("請先執行分析")
+            return
+        
+        # 獲取當前訊號和摘要
+        current_signal = self.analyzer.get_current_signal()
+        summary = self.analyzer.get_signal_summary()
+        
+        # 創建綜合圖表
+        fig = make_subplots(
+            rows=6, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            subplot_titles=(
+                '股價與交易訊號', 
+                '成交量', 
+                'MACD', 
+                'RSI', 
+                '隨機指標',
+                '訊號強度'
+            ),
+            row_width=[0.25, 0.15, 0.15, 0.15, 0.15, 0.15]
+        )
+        
+        # 1. K線圖與訊號
+        # K線圖
+        fig.add_trace(
+            go.Candlestick(
+                x=self.data.index,
+                open=self.data['Open'],
+                high=self.data['High'],
+                low=self.data['Low'],
+                close=self.data['Close'],
+                name='K線'
+            ),
+            row=1, col=1
+        )
+        
+        # 移動平均線
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['SMA_20'],
+                mode='lines',
+                name='SMA 20',
+                line=dict(color='orange', width=1)
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['SMA_50'],
+                mode='lines',
+                name='SMA 50',
+                line=dict(color='blue', width=1)
+            ),
+            row=1, col=1
+        )
+        
+        # 布林通道
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['BB_Upper'],
+                mode='lines',
+                name='布林上軌',
+                line=dict(color='gray', width=1, dash='dash')
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['BB_Lower'],
+                mode='lines',
+                name='布林下軌',
+                line=dict(color='gray', width=1, dash='dash'),
+                fill='tonexty'
+            ),
+            row=1, col=1
+        )
+        
+        # 買入訊號
+        buy_signals = self.signals[self.signals['Signal'] == 1]
+        if len(buy_signals) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=buy_signals.index,
+                    y=buy_signals['Price'],
+                    mode='markers',
+                    name='買入訊號',
+                    marker=dict(color='green', size=10, symbol='triangle-up')
+                ),
+                row=1, col=1
+            )
+        
+        # 賣出訊號
+        sell_signals = self.signals[self.signals['Signal'] == -1]
+        if len(sell_signals) > 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=sell_signals.index,
+                    y=sell_signals['Price'],
+                    mode='markers',
+                    name='賣出訊號',
+                    marker=dict(color='red', size=10, symbol='triangle-down')
+                ),
+                row=1, col=1
+            )
+        
+        # 2. 成交量
+        colors = ['red' if close < open else 'green' 
+                 for close, open in zip(self.data['Close'], self.data['Open'])]
+        
+        fig.add_trace(
+            go.Bar(
+                x=self.data.index,
+                y=self.data['Volume'],
+                name='成交量',
+                marker_color=colors,
+                opacity=0.7
+            ),
+            row=2, col=1
+        )
+        
+        # 3. MACD
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['MACD'],
+                mode='lines',
+                name='MACD',
+                line=dict(color='blue', width=1)
+            ),
+            row=3, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['MACD_Signal'],
+                mode='lines',
+                name='MACD Signal',
+                line=dict(color='red', width=1)
+            ),
+            row=3, col=1
+        )
+        
+        fig.add_trace(
+            go.Bar(
+                x=self.data.index,
+                y=self.data['MACD_Histogram'],
+                name='MACD Histogram',
+                marker_color='gray',
+                opacity=0.5
+            ),
+            row=3, col=1
+        )
+        
+        # 4. RSI
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['RSI'],
+                mode='lines',
+                name='RSI',
+                line=dict(color='purple', width=1)
+            ),
+            row=4, col=1
+        )
+        
+        # RSI 超買超賣線
+        fig.add_hline(y=70, line_dash="dash", line_color="red", row=4, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color="green", row=4, col=1)
+        
+        # 5. 隨機指標
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['Stoch_K'],
+                mode='lines',
+                name='%K',
+                line=dict(color='blue', width=1)
+            ),
+            row=5, col=1
+        )
+        
+        fig.add_trace(
+            go.Scatter(
+                x=self.data.index,
+                y=self.data['Stoch_D'],
+                mode='lines',
+                name='%D',
+                line=dict(color='red', width=1)
+            ),
+            row=5, col=1
+        )
+        
+        # 隨機指標超買超賣線
+        fig.add_hline(y=80, line_dash="dash", line_color="red", row=5, col=1)
+        fig.add_hline(y=20, line_dash="dash", line_color="green", row=5, col=1)
+        
+        # 6. 訊號強度
+        fig.add_trace(
+            go.Scatter(
+                x=self.signals.index,
+                y=self.signals['Strength'],
+                mode='lines',
+                name='訊號強度',
+                line=dict(color='blue', width=2)
+            ),
+            row=6, col=1
+        )
+        
+        # 訊號強度閾值線
+        fig.add_hline(y=30, line_dash="dash", line_color="green", row=6, col=1)
+        fig.add_hline(y=-30, line_dash="dash", line_color="red", row=6, col=1)
+        fig.add_hline(y=0, line_dash="dot", line_color="black", row=6, col=1)
+        
+        # 更新佈局
+        fig.update_layout(
+            title=f'{self.analyzer.symbol} 綜合技術分析報告',
+            xaxis_rangeslider_visible=False,
+            height=1200,
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
+        )
+        
+        # 創建 HTML 內容
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{self.analyzer.symbol} 股票分析報告</title>
+    <style>
+        body {{
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }}
+        .header {{
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+        }}
+        .header h1 {{
+            color: #007bff;
+            margin: 0;
+            font-size: 2.5em;
+        }}
+        .header p {{
+            color: #666;
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+        }}
+        .summary-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        .summary-card {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }}
+        .summary-card h3 {{
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }}
+        .summary-card .value {{
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }}
+        .signal-buy {{
+            background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+        }}
+        .signal-sell {{
+            background: linear-gradient(135deg, #cb2d3e 0%, #ef473a 100%);
+        }}
+        .signal-hold {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+        .details-section {{
+            margin: 30px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+        }}
+        .details-section h3 {{
+            color: #007bff;
+            margin-bottom: 15px;
+        }}
+        .details-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }}
+        .detail-item {{
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }}
+        .detail-item strong {{
+            color: #007bff;
+        }}
+        .chart-container {{
+            margin: 30px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        .footer {{
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+        }}
+        .risk-warning {{
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{self.analyzer.symbol} 股票分析報告</h1>
+            <p>生成時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+        
+        <div class="summary-grid">
+            <div class="summary-card signal-{current_signal['signal'].lower()}">
+                <h3>當前價格</h3>
+                <div class="value">${current_signal['price']:.2f}</div>
+            </div>
+            <div class="summary-card signal-{current_signal['signal'].lower()}">
+                <h3>建議動作</h3>
+                <div class="value">{current_signal['signal']}</div>
+            </div>
+            <div class="summary-card signal-{current_signal['signal'].lower()}">
+                <h3>訊號強度</h3>
+                <div class="value">{current_signal['strength']:.1f}</div>
+            </div>
+            <div class="summary-card">
+                <h3>分析期間</h3>
+                <div class="value">{self.analyzer.period}</div>
+            </div>
+        </div>
+        
+        <div class="details-section">
+            <h3>技術指標詳情</h3>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <strong>移動平均線訊號:</strong> {current_signal['details']['MA_Signal']}
+                </div>
+                <div class="detail-item">
+                    <strong>MACD訊號:</strong> {current_signal['details']['MACD_Signal']}
+                </div>
+                <div class="detail-item">
+                    <strong>RSI訊號:</strong> {current_signal['details']['RSI_Signal']}
+                </div>
+                <div class="detail-item">
+                    <strong>布林通道訊號:</strong> {current_signal['details']['BB_Signal']}
+                </div>
+                <div class="detail-item">
+                    <strong>隨機指標訊號:</strong> {current_signal['details']['Stoch_Signal']}
+                </div>
+            </div>
+        </div>
+        
+        <div class="details-section">
+            <h3>最近30天統計</h3>
+            <div class="details-grid">
+                <div class="detail-item">
+                    <strong>買入訊號:</strong> {summary['buy_signals']} 次
+                </div>
+                <div class="detail-item">
+                    <strong>賣出訊號:</strong> {summary['sell_signals']} 次
+                </div>
+                <div class="detail-item">
+                    <strong>持有天數:</strong> {summary['hold_days']} 天
+                </div>
+                <div class="detail-item">
+                    <strong>平均強度:</strong> {summary['avg_strength']}
+                </div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            {fig.to_html(full_html=False, include_plotlyjs=True)}
+        </div>
+        
+        <div class="risk-warning">
+            <strong>⚠️ 風險提醒:</strong> 本分析報告僅供學習和研究使用，不構成投資建議。
+            股票投資有風險，請謹慎決策，建議結合基本面分析進行投資決策。
+        </div>
+        
+        <div class="footer">
+            <p>AIStock 股票訊號分析系統 | 生成於 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+    </div>
+</body>
+</html>
+        """
+        
+        # 保存 HTML 文件
+        if save_path:
+            if not save_path.endswith('.html'):
+                save_path += '.html'
+            
+            with open(save_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"綜合報告已儲存至: {save_path}")
+            return save_path
+        else:
+            # 生成預設檔名
+            default_path = f"{self.analyzer.symbol}_analysis_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            with open(default_path, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+            
+            print(f"綜合報告已儲存至: {default_path}")
+            return default_path
+
     def plot_candlestick_with_signals(self, save_path=None):
         """繪製K線圖與交易訊號"""
         if self.data is None or self.signals is None:

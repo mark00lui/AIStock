@@ -55,29 +55,22 @@ def main():
             print("\n正在生成圖表...")
             visualizer = StockVisualizer(analyzer)
             
-            # 繪製K線圖與訊號
+            # 創建綜合 HTML 報告
             if args.save:
                 save_path = args.save
                 if not save_path.endswith('.html'):
                     save_path += '.html'
-                visualizer.plot_candlestick_with_signals(save_path)
+                visualizer.create_comprehensive_html_report(save_path)
             else:
-                visualizer.plot_candlestick_with_signals()
-            
-            # 繪製技術指標
-            visualizer.plot_technical_indicators()
-            
-            # 繪製訊號強度
-            visualizer.plot_signal_strength()
-            
-            # 創建儀表板
-            visualizer.create_dashboard()
+                visualizer.create_comprehensive_html_report()
     
     # 如果有多支股票，執行批量分析
     else:
         print(f"正在批量分析 {len(symbols)} 支股票...")
         
         results = []
+        analyzers = []  # 儲存分析器實例用於生成 HTML 報告
+        
         for i, symbol in enumerate(symbols, 1):
             print(f"\n[{i}/{len(symbols)}] 分析 {symbol}...")
             
@@ -93,6 +86,7 @@ def main():
                         'strength': current_signal['strength'],
                         'date': current_signal['date']
                     })
+                    analyzers.append(analyzer)  # 添加到分析器列表
                     print(f"  ✅ {symbol}: ${current_signal['price']:.2f} | {current_signal['signal']} | 強度: {current_signal['strength']}")
                 else:
                     print(f"  ❌ {symbol}: 分析失敗")
@@ -154,6 +148,19 @@ def main():
                 print(f"平均強度: {sum(strengths)/len(strengths):.1f}")
                 print(f"最高強度: {max(strengths):.1f}")
                 print(f"最低強度: {min(strengths):.1f}")
+        
+        # 生成 HTML 報告
+        if analyzers and (args.plot or args.save):
+            print("\n正在生成批量分析 HTML 報告...")
+            visualizer = StockVisualizer(analyzers[0])  # 使用第一個分析器創建視覺化器
+            
+            if args.save:
+                save_path = args.save
+                if not save_path.endswith('.html'):
+                    save_path += '.html'
+                visualizer.create_batch_html_report(analyzers, save_path)
+            else:
+                visualizer.create_batch_html_report(analyzers)
 
 def interactive_mode():
     """互動模式"""

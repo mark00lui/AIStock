@@ -25,6 +25,11 @@ class StockAnalyzer:
         try:
             ticker = yf.Ticker(self.symbol)
             self.data = ticker.history(period=self.period)
+            
+            if self.data is None or len(self.data) == 0:
+                print(f"無法獲取 {self.symbol} 的資料，請檢查股票代碼是否正確")
+                return False
+            
             print(f"成功獲取 {self.symbol} 的資料，共 {len(self.data)} 筆記錄")
             return True
         except Exception as e:
@@ -33,43 +38,52 @@ class StockAnalyzer:
     
     def calculate_technical_indicators(self):
         """計算技術指標"""
-        if self.data is None:
+        if self.data is None or len(self.data) == 0:
             print("請先獲取股票資料")
             return
         
         df = self.data.copy()
         
-        # 移動平均線
-        df['SMA_20'] = ta.trend.sma_indicator(df['Close'], window=20)
-        df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
-        df['EMA_12'] = ta.trend.ema_indicator(df['Close'], window=12)
-        df['EMA_26'] = ta.trend.ema_indicator(df['Close'], window=26)
+        # 檢查數據是否足夠
+        if len(df) < 50:
+            print(f"數據不足，只有 {len(df)} 筆記錄，需要至少 50 筆")
+            return
         
-        # MACD
-        df['MACD'] = ta.trend.macd_diff(df['Close'])
-        df['MACD_Signal'] = ta.trend.macd_signal(df['Close'])
-        df['MACD_Histogram'] = ta.trend.macd_diff(df['Close'])
-        
-        # RSI
-        df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
-        
-        # 布林通道
-        df['BB_Upper'] = ta.volatility.bollinger_hband(df['Close'])
-        df['BB_Lower'] = ta.volatility.bollinger_lband(df['Close'])
-        df['BB_Middle'] = ta.volatility.bollinger_mavg(df['Close'])
-        
-        # 隨機指標
-        df['Stoch_K'] = ta.momentum.stoch(df['High'], df['Low'], df['Close'])
-        df['Stoch_D'] = ta.momentum.stoch_signal(df['High'], df['Low'], df['Close'])
-        
-        # 成交量指標 (使用簡單移動平均)
-        df['Volume_SMA'] = df['Volume'].rolling(window=20).mean()
-        
-        # ATR (平均真實範圍)
-        df['ATR'] = ta.volatility.average_true_range(df['High'], df['Low'], df['Close'])
-        
-        self.data = df
-        print("技術指標計算完成")
+        try:
+            # 移動平均線
+            df['SMA_20'] = ta.trend.sma_indicator(df['Close'], window=20)
+            df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
+            df['EMA_12'] = ta.trend.ema_indicator(df['Close'], window=12)
+            df['EMA_26'] = ta.trend.ema_indicator(df['Close'], window=26)
+            
+            # MACD
+            df['MACD'] = ta.trend.macd_diff(df['Close'])
+            df['MACD_Signal'] = ta.trend.macd_signal(df['Close'])
+            df['MACD_Histogram'] = ta.trend.macd_diff(df['Close'])
+            
+            # RSI
+            df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+            
+            # 布林通道
+            df['BB_Upper'] = ta.volatility.bollinger_hband(df['Close'])
+            df['BB_Lower'] = ta.volatility.bollinger_lband(df['Close'])
+            df['BB_Middle'] = ta.volatility.bollinger_mavg(df['Close'])
+            
+            # 隨機指標
+            df['Stoch_K'] = ta.momentum.stoch(df['High'], df['Low'], df['Close'])
+            df['Stoch_D'] = ta.momentum.stoch_signal(df['High'], df['Low'], df['Close'])
+            
+            # 成交量指標 (使用簡單移動平均)
+            df['Volume_SMA'] = df['Volume'].rolling(window=20).mean()
+            
+            # ATR (平均真實範圍)
+            df['ATR'] = ta.volatility.average_true_range(df['High'], df['Low'], df['Close'])
+            
+            self.data = df
+            print("技術指標計算完成")
+        except Exception as e:
+            print(f"計算技術指標時發生錯誤: {e}")
+            return
     
     def generate_signals(self):
         """生成買賣訊號"""

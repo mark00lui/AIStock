@@ -265,15 +265,54 @@ signal = analyzer.get_current_signal()
 print(f"建議: {signal['signal']}")
 print(f"強度: {signal['strength']}")
 
-# 視覺化
+# 生成 HTML 報告
 visualizer = StockVisualizer(analyzer)
-visualizer.plot_candlestick_with_signals()
+visualizer.create_comprehensive_html_report("my_report.html")
 ```
+
+### HTML 報告功能
+
+系統現在支援生成專業的 HTML 報告，包含以下特色：
+
+#### 單一股票報告
+```bash
+# 生成單一股票 HTML 報告
+python main.py AAPL --save my_report.html
+
+# 或使用 --plot 參數
+python main.py AAPL --plot
+```
+
+#### 批量股票報告
+```bash
+# 生成批量股票 HTML 報告
+python main.py AAPL MSFT GOOGL TSLA --save batch_report.html
+
+# 或使用逗號分隔
+python main.py "AAPL,MSFT,GOOGL" --save batch_report.html
+```
+
+#### HTML 報告特色
+- **🎯 單一文件**: 所有內容都在一個 HTML 文件中
+- **📊 互動圖表**: 使用 Plotly 創建互動式圖表
+- **📱 響應式設計**: 支援手機、平板、電腦
+- **🎨 專業樣式**: 現代化的 CSS 設計
+- **📈 完整分析**: 包含所有技術指標和訊號
+- **📋 詳細數據**: 價格、訊號、強度等完整信息
+- **⚠️ 風險提醒**: 包含投資風險警告
+- **💾 易於分享**: 單一文件，方便傳送給客戶
+
+#### 報告內容
+1. **摘要卡片**: 當前價格、建議動作、訊號強度、分析期間
+2. **技術指標詳情**: 各項技術指標的具體數值
+3. **統計摘要**: 最近30天的買入/賣出/持有統計
+4. **綜合圖表**: 包含 K線圖、成交量、MACD、RSI、隨機指標、訊號強度
+5. **風險提醒**: 投資風險警告聲明
 
 ## 專案結構
 
 ```
-AIStock-1/
+AIStock/
 ├── README.md                 # 專案說明
 ├── requirements.txt          # Python 依賴套件
 ├── main.py                  # 主程式（支援單一/批量分析）
@@ -281,10 +320,13 @@ AIStock-1/
 ├── src/                     # 核心模組
 │   ├── __init__.py
 │   ├── stock_analyzer.py    # 股票分析器
-│   └── visualizer.py        # 視覺化模組
+│   └── visualizer.py        # 視覺化模組（含 HTML 報告功能）
 ├── examples/                # 使用範例
 │   └── example_usage.py     # 範例程式碼
-└── test_*.py               # 測試腳本
+├── test_*.py               # 測試腳本
+├── test_html_report.py      # HTML 報告功能測試
+├── demo_html_report.py      # HTML 報告功能演示
+└── *.html                  # 生成的 HTML 報告文件
 ```
 
 ## 訊號說明
