@@ -1,0 +1,75 @@
+# .github/workflows/daily_report_generator.yml
+name: Generate and Deploy Daily Report
+
+on:
+  # 每天台灣時間早上 8 點執行 (00:00 UTC)
+  # 您可以透過 crontab.guru 網站產生自己想要的時間
+  schedule:
+    - cron: '20 9 * * *'
+  # 增加手動觸發選項，方便測試
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      # 步驟 1: 取得您的專案原始碼
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      # 步驟 2: 設定 Python 環境
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5' # 指定您需要的 Python 版本
+
+      # 步驟 3: 安裝專案所需的套件
+      # 我看到您的專案中有 requirements.txt，這個指令會自動安裝裡面所有的套件
+      - name: Install dependencies 📦
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      # 步驟 4: 執行您的 Python 主程式
+      # *** 請將 Main.py 換成您專案的實際啟動檔名 ***
+      - name: Run script to generate report 🚀
+        run: |
+          python main.py 2330.TW 3019.TW 3008.TW 2382.TW --save-daily-report
+
+      # 步驟 5: 準備發佈內容
+      - name: Prepare deployment files 📂
+        run: |
+          # 尋找今天產生的報告檔案
+          report_file=$(find . -maxdepth 1 -name "*_report.html" -print -quit)
+          
+          if [ -z "$report_file" ]; then
+            echo "::error::Report file not found!"
+            exit 1
+          fi
+          
+          echo "Found report: $report_file"
+          
+          # 建立一個臨時的發佈目錄
+          mkdir -p deploy
+          
+          # 將最新的報告複製一份並命名為 latest_report.html
+          cp "$report_file" deploy/latest_report.html
+          
+          # 建立 reports 資料夾並將原始報告移入
+          mkdir -p deploy/reports
+          mv "$report_file" deploy/reports/
+
+      # 步驟 6: 將產生的檔案發佈到 gh-pages 分支
+      - name: Deploy to GitHub Pages 🚀
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 指定要發佈的是我們剛剛建立的 deploy 資料夾
+          publish_dir: ./deploy
+          # 持續將更新推送到 gh-pages 分支
+          keep_files: true
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: "Docs: Deploy daily report"
