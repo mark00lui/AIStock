@@ -9,6 +9,7 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
+import argparse
 from stock_analyzer import StockAnalyzer
 from visualizer import StockVisualizer
 import argparse

@@ -31,12 +31,26 @@
 ### 1. 安裝依賴套件
 
 ```bash
+# 方法一：直接安裝（推薦）
+pip install numpy pandas yfinance matplotlib seaborn ta scikit-learn plotly dash dash-bootstrap-components requests python-dotenv schedule
+
+# 方法二：使用 requirements.txt
 pip install -r requirements.txt
 ```
 
 ### 2. 驗證安裝
 
 ```bash
+# 運行測試腳本
+python test_installation.py
+
+# 測試單一股票分析
+python main.py AAPL
+
+# 測試批量分析
+python main.py AAPL MSFT GOOGL
+
+# 測試圖表功能
 python main.py AAPL --plot
 ```
 
