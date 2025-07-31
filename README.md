@@ -57,6 +57,9 @@ python main.py AAPL --plot
 # 測試股票原始名稱功能
 python test_stock_names.py
 
+# 測試每日報告功能
+python test_daily_report.py
+
 # 運行完整演示
 python demo_stock_names.py
 ```
@@ -339,6 +342,12 @@ python main.py AAPL --save-daily-report
 python main.py "AAPL,MSFT,GOOGL" --save-daily-report
 ```
 
+**每日報告特色**
+- **📅 自動日期命名**: 使用當前日期自動生成檔名（YYYY-MM-DD_report.html）
+- **🔄 每日更新**: 適合每日定時生成報告的需求
+- **📊 完整分析**: 包含單一股票或批量分析的完整報告
+- **💾 易於管理**: 按日期組織報告文件，便於歸檔和查找
+
 #### HTML 報告特色
 - **🎯 單一文件**: 所有內容都在一個 HTML 文件中
 - **📊 互動圖表**: 使用 Plotly 創建互動式圖表
@@ -373,8 +382,8 @@ AIStock/
 ├── test_*.py               # 測試腳本
 ├── test_html_report.py      # HTML 報告功能測試
 ├── test_stock_names.py      # 股票原始名稱功能測試
+├── test_daily_report.py     # 每日報告功能測試
 ├── demo_html_report.py      # HTML 報告功能演示
-├── demo_stock_names.py      # 股票原始名稱功能演示
 └── *.html                  # 生成的 HTML 報告文件
 ```
 
