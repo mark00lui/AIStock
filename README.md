@@ -42,8 +42,8 @@ pip install -r requirements.txt
 ### 2. 驗證安裝
 
 ```bash
-# 運行測試腳本
-python test_installation.py
+# 運行整合測試程序
+python test_all.py
 
 # 測試單一股票分析
 python main.py AAPL
@@ -54,14 +54,8 @@ python main.py AAPL MSFT GOOGL
 # 測試圖表功能
 python main.py AAPL --plot
 
-# 測試股票原始名稱功能
-python test_stock_names.py
-
-# 測試每日報告功能
-python test_daily_report.py
-
-# 運行完整演示
-python demo_stock_names.py
+# 運行完整演示（包含所有功能說明）
+python test_all.py
 ```
 
 ## 使用方法
@@ -164,7 +158,8 @@ python main.py "AAPL,MSFT" GOOGL TSLA
 使用專門的批量分析工具，提供更多功能：
 
 ```bash
-python batch_analysis.py
+# 批量分析功能已整合到主程式中
+python main.py AAPL MSFT GOOGL TSLA
 ```
 
 #### 批量分析功能特色
@@ -188,17 +183,16 @@ python main.py AAPL MSFT GOOGL TSLA
 python main.py "AAPL,MSFT,GOOGL" --period 6mo
 ```
 
-**2. 專用批量分析工具**
+**2. 批量分析功能**
 ```bash
-python batch_analysis.py
-# 選擇 1-4 的預設組合，或選擇 5 自訂股票代碼
+python main.py AAPL MSFT GOOGL TSLA
+# 或使用逗號分隔: python main.py "AAPL,MSFT,GOOGL,TSLA"
 ```
 
 **3. 自訂股票代碼**
 ```bash
-python batch_analysis.py
-# 選擇模式 1 (互動式輸入)
-# 輸入股票代碼: AAPL,MSFT,GOOGL,TSLA,UNH
+python main.py AAPL MSFT GOOGL TSLA UNH
+# 或使用互動模式: python main.py
 ```
 
 **3. 支援的股票類型**
@@ -398,18 +392,14 @@ AIStock/
 ├── README.md                 # 專案說明
 ├── requirements.txt          # Python 依賴套件
 ├── main.py                  # 主程式（支援單一/批量分析）
-├── batch_analysis.py        # 專用批量分析工具
+
 ├── src/                     # 核心模組
 │   ├── __init__.py
 │   ├── stock_analyzer.py    # 股票分析器
 │   └── visualizer.py        # 視覺化模組（含 HTML 報告功能）
 ├── examples/                # 使用範例
 │   └── example_usage.py     # 範例程式碼
-├── test_*.py               # 測試腳本
-├── test_html_report.py      # HTML 報告功能測試
-├── test_stock_names.py      # 股票原始名稱功能測試
-├── test_daily_report.py     # 每日報告功能測試
-├── demo_html_report.py      # HTML 報告功能演示
+├── test_all.py              # 整合測試程序（包含所有功能演示）
 └── *.html                  # 生成的 HTML 報告文件
 ```
 
