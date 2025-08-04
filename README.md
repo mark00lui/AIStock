@@ -6,7 +6,7 @@
 
 - 📊 **多指標分析**: 整合移動平均線、MACD、RSI、布林通道、隨機指標等技術指標
 - 🎯 **智能訊號**: 基於多指標加權計算，生成買入/賣出/持有訊號
-- 📈 **視覺化圖表**: 提供 K線圖、技術指標圖、訊號強度圖等多種視覺化
+- 📈 **決策導向圖表**: 提供清晰的投資決策分析圖表，重點展示為什麼會得出買入/賣出/保持建議
 - 🌍 **全球股票**: 支援美股、台股、加密貨幣等全球主要資產
 - 🔄 **批量分析**: 主程式支援多股票批量分析，一次輸入多支股票代碼
 - 📱 **互動介面**: 提供命令列、互動式和批量分析三種使用方式
@@ -299,6 +299,25 @@ from src.visualizer import StockVisualizer
 analyzer = StockAnalyzer("AAPL", period="1y")
 
 # 執行分析
+if analyzer.run_analysis():
+    # 獲取當前訊號
+    current_signal = analyzer.get_current_signal()
+    print(f"建議: {current_signal['signal']}")
+    print(f"強度: {current_signal['strength']}")
+    
+    # 創建視覺化器
+    visualizer = StockVisualizer(analyzer)
+    
+    # 生成決策導向圖表（新功能）
+    decision_report = visualizer.create_decision_chart()
+    print(f"決策分析報告: {decision_report}")
+    
+    # 生成傳統綜合圖表
+    comprehensive_report = visualizer.create_comprehensive_html_report()
+    print(f"綜合分析報告: {comprehensive_report}")
+```
+
+# 執行分析
 analyzer.run_analysis()
 
 # 獲取當前訊號
@@ -347,6 +366,13 @@ python main.py "AAPL,MSFT,GOOGL" --save-daily-report
 - **🔄 每日更新**: 適合每日定時生成報告的需求
 - **📊 完整分析**: 包含單一股票或批量分析的完整報告
 - **💾 易於管理**: 按日期組織報告文件，便於歸檔和查找
+
+#### 決策導向圖表（新功能）
+- **🎯 決策邏輯**: 清楚展示為什麼會得出買入/賣出/保持的建議
+- **📊 分層展示**: 股價趨勢、技術指標、訊號強度、綜合建議
+- **📈 重點突出**: 重點展示決策邏輯而非混亂的原始數據
+- **💡 決策說明**: 提供詳細的決策邏輯說明
+- **🎨 清晰設計**: 減少視覺混亂，提高可讀性
 
 #### HTML 報告特色
 - **🎯 單一文件**: 所有內容都在一個 HTML 文件中
