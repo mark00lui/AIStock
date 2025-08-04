@@ -315,10 +315,7 @@ class StockVisualizer:
         for i, result in enumerate(all_results):
             analyzer = result['analyzer']
             current_signal = result['signal']
-            
-            # 獲取決策說明
             decision_explanation = self._get_decision_explanation(current_signal)
-            
             # 創建該股票的決策圖表
             stock_fig = make_subplots(
                 rows=4, cols=1,
@@ -494,7 +491,6 @@ class StockVisualizer:
                     <div class="decision-section">
                         <h3>決策邏輯說明</h3>
                         <p>{decision_explanation}</p>
-                        
                         <div class="indicator-grid">
                             <div class="indicator-item">
                                 <strong>移動平均線:</strong> {signal_map.get(current_signal['details']['MA_Signal'], '持有')}
@@ -513,13 +509,11 @@ class StockVisualizer:
                             </div>
                         </div>
                     </div>
-                    
                     <div class="chart-container">
                         {stock_fig.to_html(full_html=False, include_plotlyjs=True)}
                     </div>
                 </div>
             </div>
-        </div>
 """
         
         # 添加頁腳和JavaScript
