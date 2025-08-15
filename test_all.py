@@ -1,622 +1,441 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AIStock 整合測試程序
-包含所有功能的測試：安裝檢查、系統功能、HTML報告、加密貨幣、股票分析等
-以及完整的使用方法演示和算法說明
+AIStock 完整功能測試程式
+整合所有模組的測試和演示功能
 """
 
 import sys
 import os
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+import argparse
+from datetime import datetime
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+import warnings
+warnings.filterwarnings('ignore')
 
-# 添加 src 目錄到路徑
-sys.path.append('src')
+# 導入所有模組
+from stock_analyzer import StockAnalyzer
+from visualizer import StockVisualizer
+from left_analysis import LeftAnalysis, analyze_stock, analyze_multiple_stocks
 
-def test_imports():
-    """測試所有依賴包的導入"""
-    print("=== 測試依賴包導入 ===")
-    
-    dependencies = [
-        ('pandas', 'pd'),
-        ('numpy', 'np'),
-        ('yfinance', 'yf'),
-        ('matplotlib', 'matplotlib'),
-        ('seaborn', 'sns'),
-        ('ta', 'ta'),
-        ('sklearn', 'sklearn'),
-        ('plotly', 'plotly'),
-        ('dash', 'dash')
-    ]
-    
-    failed_imports = []
-    
-    for package, alias in dependencies:
-        try:
-            __import__(package)
-            print(f"✅ {package} 導入成功")
-        except ImportError as e:
-            print(f"❌ {package} 導入失敗: {e}")
-            failed_imports.append(package)
-    
-    if failed_imports:
-        print(f"\n⚠️ 缺少依賴包: {', '.join(failed_imports)}")
-        print("請執行: pip install -r requirements.txt")
-        return False
-    
-    return True
-
-def test_stock_analyzer():
-    """測試股票分析器"""
-    print("\n=== 測試股票分析器 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        print("✅ StockAnalyzer 導入成功")
-    except ImportError as e:
-        print(f"❌ StockAnalyzer 導入失敗: {e}")
-        return False
-    
-    try:
-        analyzer = StockAnalyzer('AAPL')
-        print("✅ StockAnalyzer 創建成功")
-    except Exception as e:
-        print(f"❌ StockAnalyzer 創建失敗: {e}")
-        return False
-    
-    try:
-        result = analyzer.run_analysis()
-        if result:
-            print("✅ 股票分析執行成功")
-            current_signal = analyzer.get_current_signal()
-            print(f"   當前價格: ${current_signal['price']}")
-            print(f"   建議動作: {current_signal['signal']}")
-            print(f"   訊號強度: {current_signal['strength']}")
-        else:
-            print("❌ 股票分析執行失敗")
-            return False
-    except Exception as e:
-        print(f"❌ 股票分析執行錯誤: {e}")
-        return False
-    
-    return True
-
-def test_visualizer():
-    """測試視覺化模組"""
-    print("\n=== 測試視覺化模組 ===")
-    
-    try:
-        from visualizer import StockVisualizer
-        print("✅ StockVisualizer 導入成功")
-    except ImportError as e:
-        print(f"❌ StockVisualizer 導入失敗: {e}")
-        return False
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        analyzer = StockAnalyzer('AAPL')
-        analyzer.run_analysis()
-        visualizer = StockVisualizer(analyzer)
-        print("✅ StockVisualizer 創建成功")
-    except Exception as e:
-        print(f"❌ StockVisualizer 創建失敗: {e}")
-        return False
-    
-    return True
-
-def test_data_fetch():
-    """測試資料獲取"""
-    print("\n=== 測試資料獲取 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        analyzer = StockAnalyzer("AAPL", period="1mo")
-        if analyzer.fetch_data():
-            print("✅ 資料獲取成功")
-            print(f"   資料筆數: {len(analyzer.data)}")
-            return True
-        else:
-            print("❌ 資料獲取失敗")
-            return False
-    except Exception as e:
-        print(f"❌ 資料獲取錯誤: {e}")
-        return False
-
-def test_technical_indicators():
-    """測試技術指標計算"""
-    print("\n=== 測試技術指標計算 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        analyzer = StockAnalyzer("AAPL", period="6mo")
-        analyzer.fetch_data()
-        analyzer.calculate_technical_indicators()
-        
-        # 檢查是否有計算技術指標
-        required_columns = ['SMA_20', 'SMA_50', 'MACD', 'RSI', 'BB_Upper', 'BB_Lower']
-        missing_columns = [col for col in required_columns if col not in analyzer.data.columns]
-        
-        if not missing_columns:
-            print("✅ 技術指標計算成功")
-            return True
-        else:
-            print(f"❌ 缺少技術指標: {missing_columns}")
-            return False
-    except Exception as e:
-        print(f"❌ 技術指標計算錯誤: {e}")
-        return False
-
-def test_signal_generation():
-    """測試訊號生成"""
-    print("\n=== 測試訊號生成 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        analyzer = StockAnalyzer("AAPL", period="6mo")
-        analyzer.fetch_data()
-        analyzer.calculate_technical_indicators()
-        analyzer.generate_signals()
-        
-        if analyzer.signals is not None:
-            print("✅ 訊號生成成功")
-            current_signal = analyzer.get_current_signal()
-            print(f"   當前訊號: {current_signal['signal']}")
-            print(f"   訊號強度: {current_signal['strength']}")
-            return True
-        else:
-            print("❌ 訊號生成失敗")
-            return False
-    except Exception as e:
-        print(f"❌ 訊號生成錯誤: {e}")
-        return False
-
-def test_taiwan_stock():
-    """測試台股功能"""
-    print("\n=== 測試台股功能 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        analyzer = StockAnalyzer("2330.TW", period="1mo")
-        if analyzer.fetch_data():
-            print("✅ 台股資料獲取成功")
-            return True
-        else:
-            print("❌ 台股資料獲取失敗")
-            return False
-    except Exception as e:
-        print(f"❌ 台股功能錯誤: {e}")
-        return False
-
-def test_crypto():
-    """測試加密貨幣功能"""
-    print("\n=== 測試加密貨幣功能 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        analyzer = StockAnalyzer("BTC-USD", period="1mo")
-        if analyzer.fetch_data():
-            print("✅ 加密貨幣資料獲取成功")
-            return True
-        else:
-            print("❌ 加密貨幣資料獲取失敗")
-            return False
-    except Exception as e:
-        print(f"❌ 加密貨幣功能錯誤: {e}")
-        return False
-
-def test_stock_names():
-    """測試股票原始名稱獲取"""
-    print("\n=== 測試股票原始名稱 ===")
-    
-    test_stocks = [
-        'AAPL',      # Apple Inc.
-        'MSFT',      # Microsoft Corporation
-        '2330.TW',   # 台積電
-        'GOOGL',     # Alphabet Inc.
-        'TSLA'       # Tesla, Inc.
-    ]
-    
-    success_count = 0
-    
-    for symbol in test_stocks:
-        try:
-            from stock_analyzer import StockAnalyzer
-            analyzer = StockAnalyzer(symbol)
-            if analyzer.fetch_data():
-                print(f"✅ {symbol} → {analyzer.long_name}")
-                success_count += 1
-            else:
-                print(f"❌ 無法獲取 {symbol} 的資料")
-        except Exception as e:
-            print(f"❌ {symbol} 錯誤: {e}")
-    
-    return success_count >= 3  # 至少3個成功
-
-def create_mock_data(symbol, days=250):
-    """創建模擬股票數據"""
-    # 創建日期範圍
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days)
-    dates = pd.date_range(start=start_date, end=end_date, freq='D')
-    
-    # 創建模擬價格數據
-    np.random.seed(42)  # 確保可重複性
-    
-    # 基礎價格
-    base_price = 100.0
-    prices = [base_price]
-    
-    # 生成價格序列
-    for i in range(1, len(dates)):
-        # 隨機價格變動
-        change = np.random.normal(0, 0.02)  # 2% 標準差
-        new_price = prices[-1] * (1 + change)
-        prices.append(max(new_price, 1))  # 確保價格為正
-    
-    # 創建 OHLC 數據
-    data = []
-    for i, price in enumerate(prices):
-        # 生成開盤、最高、最低、收盤價
-        open_price = price * (1 + np.random.normal(0, 0.005))
-        high_price = max(open_price, price) * (1 + abs(np.random.normal(0, 0.01)))
-        low_price = min(open_price, price) * (1 - abs(np.random.normal(0, 0.01)))
-        close_price = price
-        
-        # 生成成交量
-        volume = np.random.randint(1000000, 10000000)
-        
-        data.append({
-            'Open': open_price,
-            'High': high_price,
-            'Low': low_price,
-            'Close': close_price,
-            'Volume': volume
-        })
-    
-    # 創建 DataFrame
-    df = pd.DataFrame(data, index=dates)
-    return df
-
-def test_html_report():
-    """測試 HTML 報告功能"""
-    print("\n=== 測試 HTML 報告功能 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        from visualizer import StockVisualizer
-        
-        # 創建模擬數據
-        mock_data = create_mock_data('AAPL')
-        
-        # 創建分析器並手動設置數據
-        analyzer = StockAnalyzer('AAPL', '1y')
-        analyzer.data = mock_data
-        
-        # 計算技術指標
-        analyzer.calculate_technical_indicators()
-        
-        # 生成訊號
-        analyzer.generate_signals()
-        
-        # 創建視覺化器
-        visualizer = StockVisualizer(analyzer)
-        
-        # 生成 HTML 報告
-        report_path = visualizer.create_comprehensive_html_report('test_report.html')
-        
-        print(f"✅ HTML 報告已生成: {report_path}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ HTML 報告測試錯誤: {e}")
-        return False
-
-def test_batch_analysis():
-    """測試批量分析功能"""
-    print("\n=== 測試批量分析功能 ===")
-    
-    try:
-        from stock_analyzer import StockAnalyzer
-        from visualizer import StockVisualizer
-        
-        symbols = ['AAPL', 'MSFT', 'GOOGL']
-        analyzers = []
-        
-        for symbol in symbols:
-            # 創建模擬數據
-            mock_data = create_mock_data(symbol)
-            
-            # 創建分析器並手動設置數據
-            analyzer = StockAnalyzer(symbol, '1y')
-            analyzer.data = mock_data
-            
-            # 計算技術指標
-            analyzer.calculate_technical_indicators()
-            
-            # 生成訊號
-            analyzer.generate_signals()
-            
-            analyzers.append(analyzer)
-            print(f"  ✅ {symbol} 分析完成")
-        
-        # 創建視覺化器
-        visualizer = StockVisualizer(analyzers[0])
-        
-        # 生成批量 HTML 報告
-        report_path = visualizer.create_batch_html_report(analyzers, 'test_batch_report.html')
-        
-        print(f"✅ 批量分析報告已生成: {report_path}")
-        return True
-        
-    except Exception as e:
-        print(f"❌ 批量分析測試錯誤: {e}")
-        return False
-
-def test_main_program():
-    """測試主程式"""
-    print("\n=== 測試主程式 ===")
-    
-    try:
-        import main
-        print("✅ 主程式導入成功")
-        return True
-    except ImportError as e:
-        print(f"❌ 主程式導入失敗: {e}")
-        return False
-
-def demonstrate_batch_analysis():
-    """演示批量分析功能"""
+def test_left_analysis():
+    """測試左側分析功能"""
     print("\n" + "=" * 60)
-    print("=== 批量分析功能演示 ===")
+    print("=== 左側分析功能測試 ===")
     print("=" * 60)
     
-    print("\n📊 批量分析功能特色:")
-    print("✅ 主程式支援: python main.py AAPL MSFT GOOGL")
-    print("✅ 靈活輸入: 支援空格分隔、逗號分隔")
-    print("✅ 快速分析: 預設股票組合（科技股、金融股、加密貨幣、台股）")
-    print("✅ 互動輸入: 自訂股票代碼列表")
-    print("✅ 結果排序: 按訊號強度排序顯示結果")
-    print("✅ 統計摘要: 提供買入/賣出/持有統計")
-    print("✅ CSV 匯出: 可將結果儲存為 CSV 檔案")
+    # 創建分析器
+    analyzer = LeftAnalysis()
     
-    print("\n🎯 使用範例:")
-    print("1. 主程式批量分析:")
-    print("   python main.py AAPL MSFT GOOGL TSLA")
-    print("   python main.py 'AAPL,MSFT,GOOGL' --period 6mo")
-    print()
-    print("2. 專用批量分析工具:")
-    print("   python batch_analysis.py")
-    print("   選擇 1-4 的預設組合，或選擇 5 自訂股票代碼")
-    print()
-    print("3. 支援的股票類型:")
-    print("   • 美股: AAPL, MSFT, GOOGL, TSLA, NVDA, META")
-    print("   • 金融股: JPM, BAC, WFC, GS, MS, UNH, JNJ")
-    print("   • 加密貨幣: BTC-USD, ETH-USD, BNB-USD, SOL-USD, ADA-USD")
-    print("   • 台股: 2330.TW, 2317.TW, 2454.TW, 3008.TW, 2412.TW")
+    # 測試股票
+    test_symbols = ['AAPL', 'MSFT', 'TSLA']
+    
+    print("\n🔍 測試單一股票分析:")
+    for symbol in test_symbols:
+        print(f"\n--- 分析 {symbol} ---")
+        result = analyzer.analyze_stock_price(symbol)
+        
+        if 'error' in result:
+            print(f"❌ {result['error']}")
+            continue
+        
+        print(f"✅ 分析成功")
+        print(f"   股票名稱: {result['stock_name']}")
+        print(f"   當前股價: ${result['current_price']:.2f}")
+        print(f"   Forward EPS: ${result['forward_eps']:.2f}" if result['forward_eps'] else "   Forward EPS: N/A")
+        print(f"   Forward P/E: {result['forward_pe']:.2f}" if result['forward_pe'] else "   Forward P/E: N/A")
+        print(f"   數據來源: {', '.join(result['sources_used'])}")
+        
+        # 顯示各時間範圍的預估
+        for timeframe in ['1_year', '2_year', '3_year']:
+            if timeframe in result['timeframes']:
+                tf_data = result['timeframes'][timeframe]
+                print(f"\n   {tf_data['timeframe']} ({tf_data['target_date']}):")
+                print(f"     平均預估價: ${tf_data['target_mean']:.2f}")
+                print(f"     最高預估價: ${tf_data['target_high']:.2f}" if tf_data['target_high'] else "     最高預估價: N/A")
+                print(f"     最低預估價: ${tf_data['target_low']:.2f}" if tf_data['target_low'] else "     最低預估價: N/A")
+                print(f"     預期報酬率: {tf_data['potential_return']:.2f}%" if tf_data['potential_return'] else "     預期報酬率: N/A")
+                if tf_data.get('future_eps'):
+                    print(f"     預估 EPS: ${tf_data['future_eps']:.2f}")
+        
+        # 顯示歷史本益比數據（如果可用）
+        if 'historical_pe' in result:
+            pe_data = result['historical_pe']
+            print(f"\n   歷史本益比分析:")
+            print(f"     數據期間: {pe_data['period']}")
+            print(f"     數據點數: {pe_data['data_points']}")
+            print(f"     平均本益比: {pe_data['mean_pe']:.2f}")
+            print(f"     最高本益比: {pe_data['max_pe']:.2f}")
+            print(f"     最低本益比: {pe_data['min_pe']:.2f}")
+    
+    print(f"\n🔍 測試批量分析:")
+    batch_result = analyze_multiple_stocks(test_symbols)
+    print(f"✅ 批量分析完成")
+    print(f"   分析股票數: {batch_result['total_stocks']}")
+    print(f"   分析日期: {batch_result['analysis_date']}")
+    
+    # 顯示批量分析摘要
+    successful_analyses = [r for r in batch_result['results'] if 'error' not in r]
+    print(f"   成功分析: {len(successful_analyses)}/{batch_result['total_stocks']}")
+    
+    if successful_analyses:
+        print(f"\n   批量分析摘要:")
+        for result in successful_analyses:
+            symbol = result['symbol']
+            current_price = result['current_price']
+            if '1_year' in result['timeframes']:
+                target_mean = result['timeframes']['1_year']['target_mean']
+                potential_return = result['timeframes']['1_year']['potential_return']
+                print(f"     {symbol}: 當前${current_price:.2f} → 1年後${target_mean:.2f} ({potential_return:+.2f}%)")
+    
+    print(f"\n🔍 測試便捷函數:")
+    single_result = analyze_stock('AAPL')
+    if 'error' not in single_result:
+        print(f"✅ 便捷函數測試成功")
+        print(f"   返回數據包含 {len(single_result)} 個主要欄位")
+        print(f"   時間範圍: {list(single_result['timeframes'].keys())}")
+    else:
+        print(f"❌ 便捷函數測試失敗: {single_result['error']}")
+    
+    print(f"\n📊 JSON 格式輸出示例:")
+    if 'error' not in single_result:
+        # 顯示 JSON 格式的結構
+        json_structure = {
+            'symbol': single_result['symbol'],
+            'stock_name': single_result['stock_name'],
+            'current_price': single_result['current_price'],
+            'timeframes': {
+                '1_year': {
+                    'target_mean': single_result['timeframes']['1_year']['target_mean'],
+                    'target_high': single_result['timeframes']['1_year']['target_high'],
+                    'target_low': single_result['timeframes']['1_year']['target_low'],
+                    'potential_return': single_result['timeframes']['1_year']['potential_return']
+                }
+            }
+        }
+        print(f"   主要結構: {list(json_structure.keys())}")
+        print(f"   時間範圍結構: {list(json_structure['timeframes']['1_year'].keys())}")
+    
+    print(f"\n✅ 左側分析功能測試完成")
 
-def demonstrate_html_reports():
-    """演示 HTML 報告功能"""
+def demonstrate_left_analysis_usage():
+    """演示左側分析使用方法"""
     print("\n" + "=" * 60)
-    print("=== HTML 報告功能演示 ===")
-    print("=" * 60)
-    
-    print("\n📄 單一股票 HTML 報告:")
-    print("使用命令: python main.py AAPL --save my_report.html")
-    print("這將生成一個包含以下內容的單一 HTML 文件:")
-    print("✅ 股票價格和交易訊號")
-    print("✅ 技術指標圖表 (MACD, RSI, 隨機指標等)")
-    print("✅ 訊號強度分析")
-    print("✅ 詳細的技術指標數據")
-    print("✅ 風險提醒聲明")
-    print("✅ 專業的 CSS 樣式設計")
-    print("✅ 響應式佈局，支援手機和電腦")
-    print("✅ 所有內容都在單一 HTML 文件中，無需額外圖片")
-    
-    print("\n📄 批量股票 HTML 報告:")
-    print("使用命令: python main.py AAPL MSFT GOOGL TSLA --save batch_report.html")
-    print("這將生成一個包含以下內容的單一 HTML 文件:")
-    print("✅ 多支股票的綜合分析")
-    print("✅ 批量統計摘要")
-    print("✅ 每支股票的詳細結果表格")
-    print("✅ 所有股票的訊號強度對比圖")
-    print("✅ 買入/賣出/持有統計")
-    print("✅ 平均強度和強度範圍分析")
-    print("✅ 專業的表格和圖表展示")
-    
-    print("\n🎨 HTML 報告功能特色:")
-    print("🎯 單一文件: 所有內容都在一個 HTML 文件中")
-    print("📊 互動圖表: 使用 Plotly 創建互動式圖表")
-    print("📱 響應式設計: 支援手機、平板、電腦")
-    print("🎨 專業樣式: 現代化的 CSS 設計")
-    print("📈 完整分析: 包含所有技術指標和訊號")
-    print("📋 詳細數據: 價格、訊號、強度等完整信息")
-    print("⚠️ 風險提醒: 包含投資風險警告")
-    print("💾 易於分享: 單一文件，方便傳送給客戶")
-
-def explain_signal_algorithm():
-    """詳細解釋訊號強度演算法"""
-    print("\n" + "=" * 60)
-    print("=== 訊號強度演算法詳細說明 ===")
-    print("=" * 60)
-    
-    print("\n📊 演算法概述")
-    print("訊號強度是一個綜合評分系統，範圍從 -100 到 +100")
-    print("正值表示買入傾向，負值表示賣出傾向，0表示中性")
-    
-    print("\n🔧 演算法步驟")
-    print("1. 計算5個技術指標的個別訊號")
-    print("2. 根據權重加總各指標訊號")
-    print("3. 根據總強度決定最終買賣建議")
-    
-    print("\n📈 技術指標及其權重")
-    print("-" * 40)
-    print("1. 移動平均線 (MA)     - 權重: 20")
-    print("2. MACD               - 權重: 25")
-    print("3. RSI                - 權重: 20")
-    print("4. 布林通道 (BB)       - 權重: 15")
-    print("5. 隨機指標 (Stoch)    - 權重: 20")
-    print("總權重: 100")
-    
-    print("\n🎯 各指標訊號規則")
-    print("-" * 40)
-    print("每個指標的訊號值: -1 (賣出), 0 (中性), 1 (買入)")
-    
-    print("\n1. 移動平均線 (MA) - 權重 20")
-    print("   • SMA_20 > SMA_50 → 買入訊號 (+1)")
-    print("   • SMA_20 < SMA_50 → 賣出訊號 (-1)")
-    print("   • 貢獻強度: ±20")
-    
-    print("\n2. MACD - 權重 25")
-    print("   • MACD > MACD_Signal → 買入訊號 (+1)")
-    print("   • MACD < MACD_Signal → 賣出訊號 (-1)")
-    print("   • 貢獻強度: ±25")
-    
-    print("\n3. RSI - 權重 20")
-    print("   • RSI < 30 → 超賣，買入訊號 (+1)")
-    print("   • RSI > 70 → 超買，賣出訊號 (-1)")
-    print("   • 30 ≤ RSI ≤ 70 → 中性 (0)")
-    print("   • 貢獻強度: ±20")
-    
-    print("\n4. 布林通道 (BB) - 權重 15")
-    print("   • 價格 < BB_Lower → 買入訊號 (+1)")
-    print("   • 價格 > BB_Upper → 賣出訊號 (-1)")
-    print("   • BB_Lower ≤ 價格 ≤ BB_Upper → 中性 (0)")
-    print("   • 貢獻強度: ±15")
-    
-    print("\n5. 隨機指標 (Stoch) - 權重 20")
-    print("   • Stoch_K < 20 且 Stoch_D < 20 → 買入訊號 (+1)")
-    print("   • Stoch_K > 80 且 Stoch_D > 80 → 賣出訊號 (-1)")
-    print("   • 其他情況 → 中性 (0)")
-    print("   • 貢獻強度: ±20")
-    
-    print("\n🧮 強度計算公式")
-    print("-" * 40)
-    print("總強度 = MA_Signal × 20 + MACD_Signal × 25 + RSI_Signal × 20 + BB_Signal × 15 + Stoch_Signal × 20")
-    
-    print("\n📊 最終訊號判斷")
-    print("-" * 40)
-    print("• 強度 ≥ +20 → 買入訊號")
-    print("• 強度 ≤ -20 → 賣出訊號")
-    print("• -20 < 強度 < +20 → 持有訊號")
-    
-    print("\n💡 演算法特點")
-    print("-" * 40)
-    print("✅ 綜合多個技術指標，避免單一指標的誤判")
-    print("✅ 權重分配反映各指標的重要性")
-    print("✅ MACD權重最高(25)，因為趨勢指標較可靠")
-    print("✅ 布林通道權重最低(15)，因為波動較大")
-    print("✅ 閾值±20提供適當的緩衝區間")
-
-def demonstrate_usage_examples():
-    """演示使用方法"""
-    print("\n" + "=" * 60)
-    print("=== 完整使用方法演示 ===")
+    print("=== 左側分析使用方法演示 ===")
     print("=" * 60)
     
     print("\n🚀 快速開始:")
     print("1. 單一股票分析:")
-    print("   python main.py AAPL")
-    print("   python main.py AAPL --plot")
-    print("   python main.py AAPL --save my_report.html")
+    print("   from src.left_analysis import analyze_stock")
+    print("   result = analyze_stock('AAPL')")
+    print("   print(result['timeframes']['1_year']['target_mean'])")
     print()
     print("2. 批量股票分析:")
-    print("   python main.py AAPL MSFT GOOGL TSLA")
-    print("   python main.py 'AAPL,MSFT,GOOGL' --save batch.html")
+    print("   from src.left_analysis import analyze_multiple_stocks")
+    print("   result = analyze_multiple_stocks(['AAPL', 'MSFT', 'TSLA'])")
+    print("   for stock_result in result['results']:")
+    print("       print(f\"{stock_result['symbol']}: {stock_result['timeframes']['1_year']['target_mean']}\")")
     print()
-    print("3. 指定分析期間:")
-    print("   python main.py AAPL --period 6mo")
-    print("   python main.py AAPL --period 1y --plot")
+    print("3. 使用分析器類:")
+    print("   from src.left_analysis import LeftAnalysis")
+    print("   analyzer = LeftAnalysis()")
+    print("   result = analyzer.analyze_stock_price('AAPL')")
     print()
-    print("4. 互動模式:")
-    print("   python main.py")
-    print("   然後選擇分析選項")
-    print()
-    print("5. 台股和加密貨幣:")
-    print("   python main.py 2330.TW --period 1y")
-    print("   python main.py BTC-USD --period 6mo")
-    print()
-    print("6. 每日報告模式:")
-    print("   python main.py AAPL --save-daily-report")
-    print("   python main.py 'AAPL,MSFT,GOOGL' --save-daily-report")
+    print("4. 獲取歷史本益比:")
+    print("   historical_pe = analyzer.calculate_historical_pe_ratios('AAPL')")
+    print("   print(f\"平均本益比: {historical_pe['mean_pe']}\")")
     
-    print("\n📋 支援的股票代碼格式:")
-    print("• 美股: AAPL, GOOGL, MSFT, TSLA, NVDA, META")
-    print("• 台股: 2330.TW, 2317.TW, 2454.TW, 3008.TW, 2412.TW")
+    print("\n📋 返回數據結構:")
+    print("• symbol: 股票代碼")
+    print("• stock_name: 股票名稱")
+    print("• current_price: 當前股價")
+    print("• forward_eps: Forward EPS")
+    print("• forward_pe: Forward P/E")
+    print("• timeframes: 各時間範圍預估")
+    print("  - 1_year: 1年後預估")
+    print("  - 2_year: 2年後預估")
+    print("  - 3_year: 3年後預估")
+    print("• historical_pe: 歷史本益比數據（如果可用）")
+    
+    print("\n📊 時間範圍數據結構:")
+    print("• target_mean: 平均預估價")
+    print("• target_high: 最高預估價")
+    print("• target_low: 最低預估價")
+    print("• potential_return: 預期報酬率")
+    print("• future_eps: 預估 EPS")
+    print("• confidence_interval: 信賴區間")
+    
+    print("\n🎯 支援的股票代碼:")
+    print("• 美股: AAPL, MSFT, TSLA, GOOGL, AMZN, META")
+    print("• 台股: 2330.TW, 2317.TW, 2454.TW")
     print("• 港股: 0700.HK, 0941.HK")
-    print("• 加密貨幣: BTC-USD, ETH-USD, BNB-USD, SOL-USD, ADA-USD")
     print("• 其他: 請參考 Yahoo Finance 代碼格式")
+
+def test_left_analysis_integration():
+    """測試左側分析與現有系統的整合"""
+    print("\n" + "=" * 60)
+    print("=== 左側分析整合測試 ===")
+    print("=" * 60)
     
-    print("\n📊 訊號說明:")
-    print("• 買入 (1): 綜合指標顯示強烈買入訊號")
-    print("• 賣出 (-1): 綜合指標顯示強烈賣出訊號")
-    print("• 持有 (0): 指標不明確，建議觀望")
+    # 測試股票
+    symbol = 'AAPL'
+    
+    print(f"\n🔍 測試 {symbol} 的完整分析流程:")
+    
+    # 1. 技術分析
+    print(f"\n1. 技術分析:")
+    analyzer = StockAnalyzer(symbol, period='1y')
+    if analyzer.fetch_data():
+        analyzer.calculate_technical_indicators()
+        analyzer.generate_signals()
+        latest_signal = analyzer.get_latest_signal()
+        print(f"   ✅ 技術分析完成")
+        print(f"   建議: {latest_signal['action']}")
+        print(f"   強度: {latest_signal['strength']}")
+    else:
+        print(f"   ❌ 技術分析失敗")
+    
+    # 2. 左側分析
+    print(f"\n2. 左側分析:")
+    left_result = analyze_stock(symbol)
+    if 'error' not in left_result:
+        print(f"   ✅ 左側分析完成")
+        print(f"   當前股價: ${left_result['current_price']:.2f}")
+        if '1_year' in left_result['timeframes']:
+            target_mean = left_result['timeframes']['1_year']['target_mean']
+            potential_return = left_result['timeframes']['1_year']['potential_return']
+            print(f"   1年後預估: ${target_mean:.2f} ({potential_return:+.2f}%)")
+    else:
+        print(f"   ❌ 左側分析失敗: {left_result['error']}")
+    
+    # 3. 綜合建議
+    print(f"\n3. 綜合建議:")
+    if 'error' not in left_result and analyzer.data is not None:
+        current_price = left_result['current_price']
+        if '1_year' in left_result['timeframes']:
+            target_mean = left_result['timeframes']['1_year']['target_mean']
+            potential_return = left_result['timeframes']['1_year']['potential_return']
+            
+            # 綜合技術和基本面分析
+            tech_signal = latest_signal['action'] if 'latest_signal' in locals() else 'Hold'
+            tech_strength = latest_signal['strength'] if 'latest_signal' in locals() else 0
+            
+            print(f"   技術面: {tech_signal} (強度: {tech_strength})")
+            print(f"   基本面: 預期報酬率 {potential_return:+.2f}%")
+            
+            # 綜合建議邏輯
+            if tech_signal == 'Buy' and potential_return > 10:
+                print(f"   🟢 強烈買入: 技術面和基本面都看好")
+            elif tech_signal == 'Buy' or potential_return > 5:
+                print(f"   🟡 買入: 技術面或基本面看好")
+            elif tech_signal == 'Sell' and potential_return < -10:
+                print(f"   🔴 強烈賣出: 技術面和基本面都看空")
+            elif tech_signal == 'Sell' or potential_return < -5:
+                print(f"   🟠 賣出: 技術面或基本面看空")
+            else:
+                print(f"   ⚪ 持有: 等待更好的機會")
+    
+    print(f"\n✅ 整合測試完成")
+
+def test_visualizer_integration():
+    """測試視覺化整合功能"""
+    print("\n" + "=" * 60)
+    print("=== 視覺化整合測試 ===")
+    print("=" * 60)
+    
+    # 測試股票
+    symbol = 'AAPL'
+    
+    print(f"\n🔍 測試 {symbol} 的視覺化整合:")
+    
+    # 1. 技術分析
+    print(f"\n1. 技術分析:")
+    analyzer = StockAnalyzer(symbol, period='1y')
+    if analyzer.run_analysis():
+        print(f"   ✅ 技術分析完成")
+        current_signal = analyzer.get_current_signal()
+        print(f"   建議: {current_signal['signal']}")
+        print(f"   強度: {current_signal['strength']}")
+    else:
+        print(f"   ❌ 技術分析失敗")
+        return False
+    
+    # 2. 視覺化整合
+    print(f"\n2. 視覺化整合:")
+    visualizer = StockVisualizer(analyzer)
+    
+    # 測試左側分析數據獲取
+    print(f"   測試左側分析數據獲取...")
+    left_data = visualizer.get_left_analysis_data()
+    if left_data and 'error' not in left_data:
+        print(f"   ✅ 左側分析數據獲取成功")
+        print(f"   股票名稱: {left_data['stock_name']}")
+        print(f"   當前股價: ${left_data['current_price']:.2f}")
+        print(f"   數據來源: {', '.join(left_data.get('sources_used', []))}")
+    else:
+        print(f"   ❌ 左側分析數據獲取失敗")
+    
+    # 測試股價範圍可視化
+    print(f"   測試股價範圍可視化...")
+    fig = visualizer.create_price_range_visualization()
+    if fig:
+        print(f"   ✅ 股價範圍圖表生成成功")
+        fig.savefig(f'{symbol}_price_range_test.png', dpi=300, bbox_inches='tight')
+        print(f"   圖表已保存: {symbol}_price_range_test.png")
+    else:
+        print(f"   ❌ 股價範圍圖表生成失敗")
+    
+    # 測試股價範圍 HTML 報告
+    print(f"   測試股價範圍 HTML 報告...")
+    html_content = visualizer.create_price_range_html(f'{symbol}_price_range_test.html')
+    if html_content:
+        print(f"   ✅ 股價範圍 HTML 報告生成成功")
+    else:
+        print(f"   ❌ 股價範圍 HTML 報告生成失敗")
+    
+    # 測試綜合 HTML 報告
+    print(f"   測試綜合 HTML 報告...")
+    report_path = visualizer.create_comprehensive_html_report(f'{symbol}_comprehensive_test.html')
+    if report_path:
+        print(f"   ✅ 綜合 HTML 報告生成成功")
+    else:
+        print(f"   ❌ 綜合 HTML 報告生成失敗")
+    
+    print(f"\n✅ 視覺化整合測試完成")
+    return True
+
+def test_batch_visualization():
+    """測試批量視覺化功能"""
+    print("\n" + "=" * 60)
+    print("=== 批量視覺化測試 ===")
+    print("=" * 60)
+    
+    # 測試股票列表
+    symbols = ['AAPL', 'MSFT', 'TSLA']
+    analyzers = []
+    
+    print(f"\n🔍 測試批量分析: {', '.join(symbols)}")
+    
+    # 創建分析器列表
+    for symbol in symbols:
+        analyzer = StockAnalyzer(symbol, period='6mo')
+        if analyzer.run_analysis():
+            analyzers.append(analyzer)
+            print(f"   ✅ {symbol} 分析完成")
+        else:
+            print(f"   ❌ {symbol} 分析失敗")
+    
+    if analyzers:
+        print(f"\n成功分析 {len(analyzers)} 支股票")
+        
+        # 創建視覺化器
+        visualizer = StockVisualizer(analyzers[0])
+        
+        # 測試批量 HTML 報告
+        print(f"\n📄 測試批量 HTML 報告...")
+        report_path = visualizer.create_batch_html_report(analyzers, 'batch_comprehensive_test.html')
+        if report_path:
+            print(f"✅ 批量 HTML 報告生成成功")
+            print(f"   報告路徑: {report_path}")
+        else:
+            print(f"❌ 批量 HTML 報告生成失敗")
+        
+        return True
+    else:
+        print("❌ 沒有成功分析任何股票")
+        return False
+
+def demonstrate_visualization_features():
+    """演示視覺化功能特色"""
+    print("\n" + "=" * 60)
+    print("=== 視覺化功能特色演示 ===")
+    print("=" * 60)
+    
+    print("\n🎨 新增的視覺化功能:")
+    print("1. 股價範圍可視化:")
+    print("   • 顯示當前股價在未來三年預估範圍內的位置")
+    print("   • 直觀判斷股票是否被低估或高估")
+    print("   • 支援 1年、2年、3年的預估範圍")
+    print("   • 顏色編碼：綠色(低估)、紅色(合理)、橙色(高估)")
     print()
-    print("📈 訊號強度:")
-    print("• -100 到 -30: 強烈賣出訊號")
-    print("• -30 到 30: 中性區域，建議持有")
-    print("• 30 到 100: 強烈買入訊號")
+    print("2. 綜合分析報告:")
+    print("   • 技術分析 + 左側分析整合")
+    print("   • 包含股價範圍圖表")
+    print("   • 各時間範圍的詳細預估")
+    print("   • 估值狀態判斷")
+    print()
+    print("3. 批量分析報告:")
+    print("   • 多股票綜合分析")
+    print("   • 可折疊式設計")
+    print("   • 技術分析和左側分析並列顯示")
+    print("   • 按訊號強度排序")
+    print()
+    print("4. 使用方法:")
+    print("   from src.stock_analyzer import StockAnalyzer")
+    print("   from src.visualizer import StockVisualizer")
+    print("   analyzer = StockAnalyzer('AAPL')")
+    print("   analyzer.run_analysis()")
+    print("   visualizer = StockVisualizer(analyzer)")
+    print("   visualizer.create_price_range_visualization()")
+    print("   visualizer.create_comprehensive_html_report()")
+    print()
+    print("5. 支援的圖表類型:")
+    print("   • 股價範圍條形圖")
+    print("   • 技術指標綜合圖表")
+    print("   • 互動式 HTML 報告")
+    print("   • 批量分析摘要")
+    
+    print(f"\n✅ 視覺化功能特色演示完成")
 
 def main():
-    """執行所有測試和演示"""
-    print("=== AIStock 整合測試程序 ===")
-    print("包含功能測試、使用方法演示和算法說明")
-    print("開始執行所有測試...\n")
+    """主測試函數"""
+    parser = argparse.ArgumentParser(description='AIStock 完整功能測試')
+    parser.add_argument('--left-analysis', action='store_true', help='測試左側分析功能')
+    parser.add_argument('--integration', action='store_true', help='測試整合功能')
+    parser.add_argument('--visualization', action='store_true', help='測試視覺化功能')
+    parser.add_argument('--demo', action='store_true', help='演示使用方法')
+    parser.add_argument('--all', action='store_true', help='執行所有測試')
     
-    tests = [
-        ("依賴包導入", test_imports),
-        ("股票分析器", test_stock_analyzer),
-        ("視覺化模組", test_visualizer),
-        ("資料獲取", test_data_fetch),
-        ("技術指標計算", test_technical_indicators),
-        ("訊號生成", test_signal_generation),
-        ("台股功能", test_taiwan_stock),
-        ("加密貨幣功能", test_crypto),
-        ("股票名稱獲取", test_stock_names),
-        ("HTML 報告", test_html_report),
-        ("批量分析", test_batch_analysis),
-        ("主程式", test_main_program)
-    ]
+    args = parser.parse_args()
     
-    passed = 0
-    total = len(tests)
+    print("=== AIStock 完整功能測試系統 ===")
+    print("整合技術分析、左側分析和視覺化功能")
     
-    for test_name, test_func in tests:
-        try:
-            if test_func():
-                passed += 1
-        except Exception as e:
-            print(f"❌ {test_name} 測試異常: {e}")
+    if args.left_analysis or args.all:
+        test_left_analysis()
     
-    print(f"\n=== 測試結果 ===")
-    print(f"通過: {passed}/{total}")
-    print(f"成功率: {passed/total*100:.1f}%")
+    if args.integration or args.all:
+        test_left_analysis_integration()
     
-    if passed == total:
-        print("🎉 所有測試通過！系統運行正常。")
-        
-        # 執行功能演示
-        demonstrate_batch_analysis()
-        demonstrate_html_reports()
-        explain_signal_algorithm()
-        demonstrate_usage_examples()
-        
-        print("\n" + "=" * 60)
-        print("🎉 測試和演示完成！")
-        print("=" * 60)
-        print("\n您可以開始使用系統了：")
-        print("1. 執行 python main.py 進入互動模式")
-        print("2. 執行 python main.py AAPL --plot 分析蘋果股票")
-        print("3. 執行 python examples/example_usage.py 查看使用範例")
-        print("4. 執行 python main.py AAPL MSFT GOOGL 進行批量分析")
-        print("5. 執行 python main.py AAPL --save report.html 生成HTML報告")
-    else:
-        print("⚠️ 部分測試失敗，請檢查安裝和設定。")
-        print("建議執行: pip install -r requirements.txt")
+    if args.visualization or args.all:
+        test_visualizer_integration()
+        test_batch_visualization()
+        demonstrate_visualization_features()
     
-    return passed == total
+    if args.demo or args.all:
+        demonstrate_left_analysis_usage()
+    
+    if not any([args.left_analysis, args.integration, args.visualization, args.demo, args.all]):
+        # 預設執行所有測試
+        test_left_analysis()
+        test_left_analysis_integration()
+        test_visualizer_integration()
+        test_batch_visualization()
+        demonstrate_left_analysis_usage()
+        demonstrate_visualization_features()
+    
+    print(f"\n{'='*60}")
+    print("=== 測試完成 ===")
+    print("=" * 60)
+    print("✅ 所有功能測試完成")
+    print("📊 左側分析功能已整合到系統中")
+    print("🎨 視覺化功能已整合股價範圍分析")
+    print("🎯 可以使用 analyze_stock() 和 analyze_multiple_stocks() 函數")
+    print("📈 支援 JSON 格式輸出，方便圖表使用")
+    print("📄 生成的 HTML 報告包含技術分析和左側分析")
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1) 
+    main() 

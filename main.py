@@ -83,7 +83,8 @@ def main():
             if args.save_daily_report:
                 # 生成每日報告檔名格式：YYYY-MM-DD_report.html
                 daily_report_path = f"{datetime.now().strftime('%Y-%m-%d')}_report.html"
-                visualizer.create_comprehensive_html_report(daily_report_path)
+                # 即使是單一股票，也使用批量報告格式以包含圖表
+                visualizer.create_batch_html_report([analyzer], daily_report_path)
             elif args.save:
                 save_path = args.save
                 if not save_path.endswith('.html'):
