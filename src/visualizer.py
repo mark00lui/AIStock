@@ -114,12 +114,20 @@ class StockVisualizer:
         target_price_3y = year3_data.get('target_mean', 0)
         eps = year1_data.get('future_eps', 0) if year1_data.get('future_eps') is not None else 0
         
+        # 獲取增強的分析數據
+        recommended_action_1y = year1_data.get('recommended_action', 'Hold')
+        confidence_1y = year1_data.get('confidence', 'Medium')
+        buy_zone_1y = year1_data.get('buy_zone', 'N/A')
+        hold_zone_1y = year1_data.get('hold_zone', 'N/A')
+        sell_zone_1y = year1_data.get('sell_zone', 'N/A')
+        potential_return_1y = year1_data.get('potential_return', 0)
+        
         # 獲取信號
         signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
         signal_class = 'buy' if '買入' in signal_str else 'sell' if '賣出' in signal_str else 'hold'
         
-        # 創建圖表
-        price_chart = self._create_price_comparison_chart(symbol, current_price, target_price_1y, stock_display_name)
+        # 創建增強圖表
+        price_chart = self._create_enhanced_price_chart(symbol, current_price, year1_data, stock_display_name)
         technical_chart = self._create_technical_chart(analyzer)
         
         current_date = datetime.now().strftime('%Y年%m月%d日')
@@ -273,7 +281,37 @@ class StockVisualizer:
                         </div>
                         <div class="info-item">
                             <span class="label">建議動作:</span>
-                            <span class="signal-badge signal-{signal_class}">{signal_str.upper()}</span>
+                            <span class="value" style="color: {'#4CAF50' if 'Buy' in recommended_action_1y else '#F44336' if 'Sell' in recommended_action_1y else '#FF9800'};">{recommended_action_1y}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">信心等級:</span>
+                            <span class="value">{confidence_1y}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">潛在報酬:</span>
+                            <span class="value" style="color: {'#4CAF50' if potential_return_1y > 0 else '#F44336'};">{potential_return_1y:.1f}%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 價格區間信息 -->
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #2196F3;">
+                        <h4 style="margin: 0 0 15px 0; color: #333; font-size: 1.1em;">📊 1年價格區間分析</h4>
+                        <div style="font-size: 0.9em; line-height: 1.5;">
+                            <div style="margin-bottom: 8px;">
+                                <span style="color: #4CAF50; font-weight: bold;">🟢 買入區間:</span> {buy_zone_1y}
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                <span style="color: #2196F3; font-weight: bold;">🔵 持有區間:</span> {hold_zone_1y}
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                <span style="color: #F44336; font-weight: bold;">🔴 賣出區間:</span> {sell_zone_1y}
+                            </div>
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
+                                <span style="color: #666; font-weight: bold;">當前位置:</span> 
+                                <span style="color: {'#4CAF50' if current_price < year1_data.get('target_low', current_price) else '#F44336' if current_price > year1_data.get('target_high', current_price) else '#FF9800'}; font-weight: bold; font-size: 1.1em;">
+                                    {'買入區間' if current_price < year1_data.get('target_low', current_price) else '賣出區間' if current_price > year1_data.get('target_high', current_price) else '持有區間'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -302,7 +340,7 @@ class StockVisualizer:
             </div>
             
             <div class="chart-container">
-                <h3>💰 價格比較圖表</h3>
+                <h3>💰 價格區間分析圖表</h3>
                 <div id="price-chart" style="height: 400px;"></div>
             </div>
             
@@ -555,9 +593,166 @@ class StockVisualizer:
         
         return html_content
     
+    def _create_enhanced_price_chart(self, symbol, current_price, timeframe_data, stock_display_name=None):
+        """
+        創建增強的價格區間圖表 - 顯示買賣區間和當前位置
+        """
+        # 確保價格不為0或負數
+        current_price = max(current_price, 0.01)
+        
+        # 將股票代碼中的點號替換為下劃線，使其成為有效的JavaScript變量名
+        safe_symbol = symbol.replace('.', '_')
+        
+        # 使用提供的顯示名稱或默認使用股票代碼
+        chart_title = stock_display_name if stock_display_name else symbol
+        
+        # 獲取價格區間數據
+        target_low = timeframe_data.get('target_low', current_price * 0.8)
+        target_mean = timeframe_data.get('target_mean', current_price * 1.1)
+        target_high = timeframe_data.get('target_high', current_price * 1.2)
+        
+        # 確保價格合理性
+        target_low = max(target_low, current_price * 0.5)
+        target_high = max(target_high, current_price * 1.5)
+        
+        # 計算當前價格在區間中的位置
+        price_range = target_high - target_low
+        if price_range > 0:
+            current_position = (current_price - target_low) / price_range
+            current_position = max(0, min(1, current_position))  # 限制在0-1之間
+        else:
+            current_position = 0.5
+        
+        # 確定顏色
+        if current_price < target_low:
+            current_color = '#4CAF50'  # 綠色 - 買入區間
+        elif current_price < target_mean:
+            current_color = '#FF9800'  # 橙色 - 持有/買入區間
+        elif current_price < target_high:
+            current_color = '#FFC107'  # 黃色 - 持有區間
+        else:
+            current_color = '#F44336'  # 紅色 - 賣出區間
+        
+        chart_js = f"""
+        const priceData_{safe_symbol} = [
+            // 價格區間背景
+            {{
+                x: ['價格區間'],
+                y: [{target_high}],
+                type: 'bar',
+                name: '上限',
+                marker: {{
+                    color: '#F44336',
+                    opacity: 0.3
+                }},
+                showlegend: false
+            }},
+            {{
+                x: ['價格區間'],
+                y: [{target_mean}],
+                type: 'bar',
+                name: '目標均值',
+                marker: {{
+                    color: '#2196F3',
+                    opacity: 0.5
+                }},
+                showlegend: false
+            }},
+            {{
+                x: ['價格區間'],
+                y: [{target_low}],
+                type: 'bar',
+                name: '下限',
+                marker: {{
+                    color: '#4CAF50',
+                    opacity: 0.3
+                }},
+                showlegend: false
+            }},
+            // 當前價格
+            {{
+                x: ['當前價格'],
+                y: [{current_price}],
+                type: 'bar',
+                name: '當前價格',
+                marker: {{
+                    color: '{current_color}',
+                    line: {{
+                        color: '#333',
+                        width: 2
+                    }}
+                }},
+                text: ['${current_price:.2f}'],
+                textposition: 'auto',
+                textfont: {{
+                    size: 14,
+                    color: 'white',
+                    weight: 'bold'
+                }},
+                showlegend: false
+            }}
+        ];
+        
+        const priceLayout_{safe_symbol} = {{
+            title: '{chart_title} 價格區間分析',
+            yaxis: {{
+                title: '價格 ($)',
+                range: [{target_low * 0.9}, {target_high * 1.1}]
+            }},
+            margin: {{
+                l: 60,
+                r: 40,
+                t: 80,
+                b: 80
+            }},
+            annotations: [
+                {{
+                    x: 0.5,
+                    y: {target_high},
+                    xref: 'paper',
+                    yref: 'y',
+                    text: '賣出區間',
+                    showarrow: false,
+                    font: {{
+                        color: '#F44336',
+                        size: 12
+                    }}
+                }},
+                {{
+                    x: 0.5,
+                    y: {target_mean},
+                    xref: 'paper',
+                    yref: 'y',
+                    text: '持有區間',
+                    showarrow: false,
+                    font: {{
+                        color: '#2196F3',
+                        size: 12
+                    }}
+                }},
+                {{
+                    x: 0.5,
+                    y: {target_low},
+                    xref: 'paper',
+                    yref: 'y',
+                    text: '買入區間',
+                    showarrow: false,
+                    font: {{
+                        color: '#4CAF50',
+                        size: 12
+                    }}
+                }}
+            ],
+            showlegend: false
+        }};
+        
+        Plotly.newPlot('price-chart-{symbol}', priceData_{safe_symbol}, priceLayout_{safe_symbol});
+        """
+        return chart_js
+    
     def _create_price_comparison_chart(self, symbol, current_price, target_price, stock_display_name=None):
         """
-        創建價格比較圖表 - 可重用函數
+        創建價格比較圖表 - 可重用函數（保持向後兼容）
         """
         # 確保價格不為0或負數
         current_price = max(current_price, 0.01)
@@ -587,8 +782,8 @@ class StockVisualizer:
             }}
         ];
         
-                 const priceLayout_{safe_symbol} = {{
-             title: '{chart_title} 價格比較',
+        const priceLayout_{safe_symbol} = {{
+            title: '{chart_title} 價格比較',
             yaxis: {{
                 title: '價格 ($)'
             }},
@@ -875,6 +1070,14 @@ class StockVisualizer:
             target_price_3y = year3_data.get('target_mean', 0)
             eps = year1_data.get('future_eps', 0) if year1_data.get('future_eps') is not None else 0
             
+            # 獲取增強的分析數據
+            recommended_action_1y = year1_data.get('recommended_action', 'Hold')
+            confidence_1y = year1_data.get('confidence', 'Medium')
+            buy_zone_1y = year1_data.get('buy_zone', 'N/A')
+            hold_zone_1y = year1_data.get('hold_zone', 'N/A')
+            sell_zone_1y = year1_data.get('sell_zone', 'N/A')
+            potential_return_1y = year1_data.get('potential_return', 0)
+            
             # 獲取信號字符串
             signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
             signal_class = 'buy' if '買入' in signal_str else 'sell' if '賣出' in signal_str else 'hold'
@@ -883,8 +1086,8 @@ class StockVisualizer:
             valuation_status = "低估" if current_price < target_price_1y else "高估" if current_price > target_price_1y else "合理"
             valuation_color = "#4CAF50" if valuation_status == "低估" else "#f44336" if valuation_status == "高估" else "#ff9800"
             
-            # 創建圖表
-            price_chart = self._create_price_comparison_chart(symbol, current_price, target_price_1y, stock_display_name)
+            # 創建增強圖表
+            price_chart = self._create_enhanced_price_chart(symbol, current_price, year1_data, stock_display_name)
             technical_chart = self._create_technical_chart(analyzer)
             
             stock_html = f"""
@@ -919,8 +1122,38 @@ class StockVisualizer:
                                 <span class="value">${eps:.2f}</span>
                             </div>
                             <div class="info-item">
-                                <span class="label">估值狀態:</span>
-                                <span class="value" style="color: {valuation_color};">{valuation_status}</span>
+                                <span class="label">建議動作:</span>
+                                <span class="value" style="color: {'#4CAF50' if 'Buy' in recommended_action_1y else '#F44336' if 'Sell' in recommended_action_1y else '#FF9800'};">{recommended_action_1y}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">信心等級:</span>
+                                <span class="value">{confidence_1y}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">潛在報酬:</span>
+                                <span class="value" style="color: {'#4CAF50' if potential_return_1y > 0 else '#F44336'};">{potential_return_1y:.1f}%</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 價格區間信息 -->
+                        <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #2196F3;">
+                            <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">📊 1年價格區間分析</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4;">
+                                <div style="margin-bottom: 5px;">
+                                    <span style="color: #4CAF50; font-weight: bold;">🟢 買入區間:</span> {buy_zone_1y}
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <span style="color: #2196F3; font-weight: bold;">🔵 持有區間:</span> {hold_zone_1y}
+                                </div>
+                                <div style="margin-bottom: 5px;">
+                                    <span style="color: #F44336; font-weight: bold;">🔴 賣出區間:</span> {sell_zone_1y}
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
+                                    <span style="color: #666; font-weight: bold;">當前位置:</span> 
+                                    <span style="color: {'#4CAF50' if current_price < year1_data.get('target_low', current_price) else '#F44336' if current_price > year1_data.get('target_high', current_price) else '#FF9800'}; font-weight: bold;">
+                                        {'買入區間' if current_price < year1_data.get('target_low', current_price) else '賣出區間' if current_price > year1_data.get('target_high', current_price) else '持有區間'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -950,7 +1183,7 @@ class StockVisualizer:
                 
                 <!-- 圖表區域 -->
                 <div class="chart-container">
-                    <h5>💰 價格比較圖表</h5>
+                    <h5>💰 價格區間分析圖表</h5>
                     <div id="price-chart-{symbol}" style="height: 400px;"></div>
                 </div>
                 
