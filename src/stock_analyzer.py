@@ -134,36 +134,50 @@ class StockAnalyzer:
             # 移動平均線
             df['SMA_20'] = ta.trend.sma_indicator(df['Close'], window=20)
             df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
+            df['SMA_120'] = ta.trend.sma_indicator(df['Close'], window=120)
             df['EMA_12'] = ta.trend.ema_indicator(df['Close'], window=12)
             df['EMA_26'] = ta.trend.ema_indicator(df['Close'], window=26)
             
             # MACD
-            df['MACD'] = ta.trend.macd_diff(df['Close'])
-            df['MACD_Signal'] = ta.trend.macd_signal(df['Close'])
-            df['MACD_Histogram'] = ta.trend.macd_diff(df['Close'])
+            macd_indicator = ta.trend.MACD(df['Close'])
+            df['MACD'] = macd_indicator.macd()
+            df['MACD_Signal'] = macd_indicator.macd_signal()
+            df['MACD_Histogram'] = macd_indicator.macd_diff()
             
             # RSI
             df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
             
             # 布林通道
-            df['BB_Upper'] = ta.volatility.bollinger_hband(df['Close'])
-            df['BB_Lower'] = ta.volatility.bollinger_lband(df['Close'])
-            df['BB_Middle'] = ta.volatility.bollinger_mavg(df['Close'])
+            bb_indicator = ta.volatility.BollingerBands(df['Close'])
+            df['BB_Upper'] = bb_indicator.bollinger_hband()
+            df['BB_Lower'] = bb_indicator.bollinger_lband()
+            df['BB_Middle'] = bb_indicator.bollinger_mavg()
             
             # 隨機指標
-            df['Stoch_K'] = ta.momentum.stoch(df['High'], df['Low'], df['Close'])
-            df['Stoch_D'] = ta.momentum.stoch_signal(df['High'], df['Low'], df['Close'])
+            stoch_indicator = ta.momentum.StochasticOscillator(df['High'], df['Low'], df['Close'])
+            df['Stoch_K'] = stoch_indicator.stoch()
+            df['Stoch_D'] = stoch_indicator.stoch_signal()
             
             # 成交量指標 (使用簡單移動平均)
             df['Volume_SMA'] = df['Volume'].rolling(window=20).mean()
             
             # ATR (平均真實範圍)
-            df['ATR'] = ta.volatility.average_true_range(df['High'], df['Low'], df['Close'])
+            df['ATR'] = ta.volatility.AverageTrueRange(df['High'], df['Low'], df['Close']).average_true_range()
+            
+            # 檢查計算結果
+            technical_columns = ['SMA_20', 'SMA_50', 'SMA_120', 'BB_Upper', 'BB_Lower', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Histogram']
+            for col in technical_columns:
+                if col in df.columns:
+                    nan_count = df[col].isna().sum()
+                    if nan_count > 0:
+                        print(f"警告: {col} 有 {nan_count} 個NaN值")
             
             self.data = df
             print("技術指標計算完成")
         except Exception as e:
             print(f"計算技術指標時發生錯誤: {e}")
+            import traceback
+            traceback.print_exc()
             return
     
     def generate_signals(self):
@@ -249,21 +263,104 @@ class StockAnalyzer:
         }
     
     def get_signal_summary(self, days=30):
-        """獲取最近幾天的訊號摘要"""
-        if self.signals is None:
-            print("請先生成訊號")
+        """獲取最近幾天的訊號摘要，包含技術指標狀態"""
+        if self.signals is None or self.data is None:
+            print("請先生成訊號和技術指標")
             return None
         
         recent_signals = self.signals.tail(days)
         buy_signals = recent_signals[recent_signals['Signal'] == 1]
         sell_signals = recent_signals[recent_signals['Signal'] == -1]
         
+        # 獲取最新的技術指標值
+        latest = self.data.iloc[-1]
+        
+        # RSI 狀態判斷
+        rsi_value = latest.get('RSI', None)
+        if rsi_value is not None:
+            if rsi_value > 70:
+                rsi_status = 'overbought'
+            elif rsi_value < 30:
+                rsi_status = 'oversold'
+            else:
+                rsi_status = 'neutral'
+        else:
+            rsi_status = 'neutral'
+        
+        # MACD 狀態判斷
+        macd_value = latest.get('MACD', None)
+        macd_signal = latest.get('MACD_Signal', None)
+        if macd_value is not None and macd_signal is not None:
+            if macd_value > macd_signal:
+                macd_status = 'bullish'
+            else:
+                macd_status = 'bearish'
+        else:
+            macd_status = 'neutral'
+        
+        # 布林通道位置判斷
+        close_price = latest.get('Close', None)
+        bb_upper = latest.get('BB_Upper', None)
+        bb_lower = latest.get('BB_Lower', None)
+        if close_price is not None and bb_upper is not None and bb_lower is not None:
+            if close_price > bb_upper:
+                bb_position = 'above_upper'
+                bb_status = 'overbought'
+            elif close_price < bb_lower:
+                bb_position = 'below_lower'
+                bb_status = 'oversold'
+            else:
+                bb_position = 'within_bands'
+                bb_status = 'neutral'
+        else:
+            bb_position = 'N/A'
+            bb_status = 'neutral'
+        
+        # 均線狀態判斷
+        close_price = latest.get('Close', None)
+        sma_20 = latest.get('SMA_20', None)
+        sma_50 = latest.get('SMA_50', None)
+        sma_120 = latest.get('SMA_120', None)
+        
+        if close_price is not None and sma_20 is not None and sma_50 is not None:
+            if close_price > sma_20 and sma_20 > sma_50:
+                ma_status = 'bullish'
+            elif close_price < sma_20 and sma_20 < sma_50:
+                ma_status = 'bearish'
+            else:
+                ma_status = 'neutral'
+        else:
+            ma_status = 'neutral'
+        
+        # 成交量趨勢
+        volume = latest.get('Volume', None)
+        if volume is not None:
+            avg_volume = self.data['Volume'].tail(20).mean()
+            if volume > avg_volume * 1.5:
+                volume_trend = 'high'
+            elif volume < avg_volume * 0.5:
+                volume_trend = 'low'
+            else:
+                volume_trend = 'normal'
+        else:
+            volume_trend = 'N/A'
+        
         return {
             'total_days': len(recent_signals),
             'buy_signals': len(buy_signals),
             'sell_signals': len(sell_signals),
             'hold_days': len(recent_signals) - len(buy_signals) - len(sell_signals),
-            'avg_strength': round(recent_signals['Strength'].mean(), 2)
+            'avg_strength': round(recent_signals['Strength'].mean(), 2),
+            # 技術指標值
+            'rsi': round(rsi_value, 2) if rsi_value is not None else 'N/A',
+            'rsi_status': rsi_status,
+            'macd': round(macd_value, 4) if macd_value is not None else 'N/A',
+            'macd_status': macd_status,
+            'bb_position': bb_position,
+            'bb_status': bb_status,
+            'ma_status': ma_status,
+            'volume': f"{volume:,.0f}" if volume is not None else 'N/A',
+            'volume_trend': volume_trend
         }
     
     def run_analysis(self):
