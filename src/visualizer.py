@@ -141,81 +141,99 @@ class StockVisualizer:
     <title>{symbol} 股票分析報告</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
+        * {{
+            box-sizing: border-box;
+        }}
+        
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f5f5f5;
+            line-height: 1.6;
         }}
+        
         .container {{
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
-            border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
         }}
+        
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
+            padding: 30px 20px;
             text-align: center;
         }}
+        
         .header h1 {{
             margin: 0;
-            font-size: 2.5em;
+            font-size: clamp(1.8em, 4vw, 2.5em);
             font-weight: 300;
         }}
+        
         .header p {{
             margin: 10px 0 0 0;
             opacity: 0.9;
-            font-size: 1.1em;
+            font-size: clamp(0.9em, 2vw, 1.1em);
         }}
+        
         .report-date {{
             margin-top: 15px !important;
             font-size: 0.9em !important;
             opacity: 0.8 !important;
         }}
+        
         .analysis-section {{
-            padding: 30px;
+            padding: 20px;
         }}
+        
         .analysis-grid {{
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            grid-template-columns: 1fr;
+            gap: 20px;
             margin-bottom: 30px;
         }}
+        
         .analysis-panel {{
             background: #f8f9fa;
             border-radius: 8px;
             padding: 20px;
         }}
+        
         .analysis-panel h3 {{
             margin: 0 0 20px 0;
             color: #333;
             font-size: 1.3em;
         }}
+        
         .info-grid {{
             display: grid;
             gap: 10px;
         }}
+        
         .info-item {{
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #eee;
         }}
+        
         .info-item:last-child {{
             border-bottom: none;
         }}
+        
         .label {{
             font-weight: 500;
             color: #666;
         }}
+        
         .value {{
             font-weight: bold;
             color: #333;
         }}
+        
         .signal-badge {{
             padding: 8px 16px;
             border-radius: 20px;
@@ -223,15 +241,19 @@ class StockVisualizer:
             font-size: 0.9em;
             color: white;
         }}
+        
         .signal-buy {{
             background: #4CAF50;
         }}
+        
         .signal-sell {{
             background: #f44336;
         }}
+        
         .signal-hold {{
             background: #ff9800;
         }}
+        
         .chart-container {{
             margin-top: 20px;
             padding: 20px;
@@ -239,20 +261,56 @@ class StockVisualizer:
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
+        
         .chart-container h3 {{
             margin: 0 0 15px 0;
             color: #333;
             font-size: 1.2em;
         }}
+        
+        /* 響應式設計 */
+        @media (min-width: 768px) {{
+            .header {{
+                padding: 40px 30px;
+            }}
+            
+            .analysis-section {{
+                padding: 30px;
+            }}
+            
+            .analysis-grid {{
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
+            }}
+        }}
+        
+        /* 動畫效果 */
+        .analysis-panel {{
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+        
+        .analysis-panel:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }}
+        
+        .chart-container {{
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+        
+        .chart-container:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }}
     </style>
 </head>
 <body>
     <div class="container">
-                 <div class="header">
-             <h1>📊 {stock_display_name} 股票分析報告</h1>
-             <p>技術分析 + 基本面分析綜合評估</p>
-             <p class="report-date">生成日期: {current_date}</p>
-         </div>
+        <div class="header">
+            <h1>📊 {stock_display_name} 股票分析報告</h1>
+            <p>技術分析 + 基本面分析綜合評估</p>
+            <p class="report-date">生成日期: {current_date}</p>
+        </div>
         
         <div class="analysis-section">
             <div class="analysis-grid">
@@ -366,9 +424,12 @@ class StockVisualizer:
     
     def _generate_batch_html(self, all_results):
         """
-        生成批次分析HTML內容 - 復用單一股票功能
+        生成批次分析HTML內容 - 響應式設計版本
         """
         current_date = datetime.now().strftime('%Y年%m月%d日')
+        
+        # 生成股票導航列表
+        stock_navigation = self._generate_stock_navigation(all_results)
         
         # 生成摘要統計
         summary_stats = self._generate_summary_stats(all_results)
@@ -376,7 +437,7 @@ class StockVisualizer:
         # 生成股票內容
         stock_content = self._generate_stock_sections(all_results)
         
-        # 批次HTML模板
+        # 響應式批次HTML模板
         html_content = f"""
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -386,163 +447,258 @@ class StockVisualizer:
     <title>股票分析報告</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
+        * {{
+            box-sizing: border-box;
+        }}
+        
         body {{
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 0;
             background-color: #f5f5f5;
+            line-height: 1.6;
         }}
+        
         .container {{
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
-            border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
         }}
+        
+        /* 響應式導航 */
+        .nav-toggle {{
+            display: none;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            border-radius: 5px;
+        }}
+        
+        .stock-nav {{
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }}
+        
+        .stock-nav h3 {{
+            margin: 0 0 15px 0;
+            font-size: 1.3em;
+            text-align: center;
+        }}
+        
+        .stock-list {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }}
+        
+        .stock-link {{
+            display: block;
+            padding: 8px 12px;
+            background: #34495e;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }}
+        
+        .stock-link:hover {{
+            background: #667eea;
+            transform: translateY(-2px);
+        }}
+        
         .header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px;
+            padding: 30px 20px;
             text-align: center;
         }}
+        
         .header h1 {{
             margin: 0;
-            font-size: 2.5em;
+            font-size: clamp(1.8em, 4vw, 2.5em);
             font-weight: 300;
         }}
+        
         .header p {{
             margin: 10px 0 0 0;
             opacity: 0.9;
-            font-size: 1.1em;
+            font-size: clamp(0.9em, 2vw, 1.1em);
         }}
+        
         .report-date {{
             margin-top: 15px !important;
             font-size: 0.9em !important;
             opacity: 0.8 !important;
         }}
+        
         .summary-section {{
-            padding: 30px;
+            padding: 20px;
             border-bottom: 1px solid #eee;
         }}
+        
         .summary-grid {{
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
         }}
+        
         .summary-card {{
             background: #f8f9fa;
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
+        
         .summary-card h3 {{
             margin: 0 0 20px 0;
             color: #333;
             font-size: 1.3em;
         }}
+        
         .stats-grid {{
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 15px;
         }}
+        
         .stat-item {{
             background: white;
             padding: 15px;
             border-radius: 6px;
             text-align: center;
         }}
+        
         .stat-value {{
             font-size: 1.5em;
             font-weight: bold;
             color: #667eea;
         }}
+        
         .stat-label {{
             font-size: 0.9em;
             color: #666;
             margin-top: 5px;
         }}
+        
         .stocks-section {{
-            padding: 30px;
+            padding: 20px;
         }}
+        
         .stocks-section h2 {{
             margin: 0 0 30px 0;
             color: #333;
-            font-size: 2em;
+            font-size: clamp(1.5em, 3vw, 2em);
             text-align: center;
         }}
+        
         .stock-card {{
             background: white;
             border-radius: 10px;
             margin-bottom: 30px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             overflow: hidden;
+            scroll-margin-top: 100px;
         }}
+        
         .stock-header {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 10px;
         }}
+        
         .stock-header h3 {{
             margin: 0;
-            font-size: 1.5em;
+            font-size: clamp(1.2em, 2.5vw, 1.5em);
+            text-align: center;
         }}
+        
         .signal-badge {{
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: bold;
             font-size: 0.9em;
+            text-align: center;
+            align-self: center;
         }}
+        
         .signal-buy {{
             background: #4CAF50;
         }}
+        
         .signal-sell {{
             background: #f44336;
         }}
+        
         .signal-hold {{
             background: #ff9800;
         }}
+        
         .analysis-layout {{
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            padding: 30px;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding: 20px;
         }}
+        
         .analysis-panel {{
             background: #f8f9fa;
             border-radius: 8px;
             padding: 20px;
         }}
+        
         .analysis-panel h4 {{
             margin: 0 0 20px 0;
             color: #333;
             font-size: 1.2em;
         }}
+        
         .info-grid {{
             display: grid;
             gap: 10px;
         }}
+        
         .info-item {{
             display: flex;
             justify-content: space-between;
             padding: 8px 0;
             border-bottom: 1px solid #eee;
         }}
+        
         .info-item:last-child {{
             border-bottom: none;
         }}
+        
         .label {{
             font-weight: 500;
             color: #666;
         }}
+        
         .value {{
             font-weight: bold;
             color: #333;
         }}
+        
         .chart-container {{
             margin-top: 20px;
             padding: 20px;
@@ -550,15 +706,154 @@ class StockVisualizer:
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }}
+        
         .chart-container h5 {{
             margin: 0 0 15px 0;
             color: #333;
             font-size: 1.1em;
         }}
+        
+        /* 響應式設計 */
+        @media (min-width: 768px) {{
+            .stock-nav {{
+                padding: 20px 30px;
+            }}
+            
+            .stock-list {{
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                max-height: 150px;
+            }}
+            
+            .header {{
+                padding: 40px 30px;
+            }}
+            
+            .summary-section {{
+                padding: 30px;
+            }}
+            
+            .stocks-section {{
+                padding: 30px;
+            }}
+            
+            .analysis-layout {{
+                grid-template-columns: 1fr 1fr;
+                gap: 30px;
+                padding: 30px;
+            }}
+            
+            .stock-header {{
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                padding: 25px 30px;
+            }}
+            
+            .stock-header h3 {{
+                text-align: left;
+            }}
+            
+            .signal-badge {{
+                align-self: auto;
+            }}
+        }}
+        
+        @media (min-width: 1024px) {{
+            .stock-list {{
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }}
+            
+            .summary-grid {{
+                grid-template-columns: 1fr 1fr;
+            }}
+        }}
+        
+        /* 滾動條樣式 */
+        .stock-list::-webkit-scrollbar {{
+            width: 6px;
+        }}
+        
+        .stock-list::-webkit-scrollbar-track {{
+            background: #34495e;
+            border-radius: 3px;
+        }}
+        
+        .stock-list::-webkit-scrollbar-thumb {{
+            background: #667eea;
+            border-radius: 3px;
+        }}
+        
+        .stock-list::-webkit-scrollbar-thumb:hover {{
+            background: #5a6fd8;
+        }}
+        
+        /* 動畫效果 */
+        .stock-card {{
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }}
+        
+        .stock-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }}
+        
+        /* 回到頂部按鈕 */
+        .back-to-top {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }}
+        
+        .back-to-top:hover {{
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }}
+        
+        /* 載入動畫 */
+        .loading {{
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }}
+        
+        .spinner {{
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }}
+        
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
     </style>
 </head>
 <body>
+    <button class="nav-toggle" onclick="toggleNav()">📋</button>
+    
     <div class="container">
+        <div class="stock-nav" id="stockNav">
+            <h3>📊 股票導航</h3>
+            <div class="stock-list">
+                {stock_navigation}
+            </div>
+        </div>
+        
         <div class="header">
             <h1>📊 股票分析報告</h1>
             <p>技術分析 + 基本面分析綜合評估</p>
@@ -587,11 +882,103 @@ class StockVisualizer:
             {stock_content}
         </div>
     </div>
+    
+    <button class="back-to-top" onclick="scrollToTop()" title="回到頂部">↑</button>
+    
+    <script>
+        // 導航切換功能
+        function toggleNav() {{
+            const nav = document.getElementById('stockNav');
+            nav.style.display = nav.style.display === 'none' ? 'block' : 'none';
+        }}
+        
+        // 平滑滾動到指定股票
+        function scrollToStock(symbol) {{
+            const element = document.getElementById('stock-' + symbol);
+            if (element) {{
+                element.scrollIntoView({{ 
+                    behavior: 'smooth',
+                    block: 'start'
+                }});
+            }}
+        }}
+        
+        // 回到頂部
+        function scrollToTop() {{
+            window.scrollTo({{
+                top: 0,
+                behavior: 'smooth'
+            }});
+        }}
+        
+        // 響應式導航顯示控制
+        function handleResize() {{
+            const nav = document.getElementById('stockNav');
+            const toggle = document.querySelector('.nav-toggle');
+            
+            if (window.innerWidth <= 768) {{
+                nav.style.display = 'none';
+                toggle.style.display = 'block';
+            }} else {{
+                nav.style.display = 'block';
+                toggle.style.display = 'none';
+            }}
+        }}
+        
+        // 頁面載入完成後初始化
+        window.addEventListener('load', function() {{
+            handleResize();
+            
+            // 添加滾動監聽，顯示/隱藏回到頂部按鈕
+            window.addEventListener('scroll', function() {{
+                const backToTop = document.querySelector('.back-to-top');
+                if (window.pageYOffset > 300) {{
+                    backToTop.style.display = 'block';
+                }} else {{
+                    backToTop.style.display = 'none';
+                }}
+            }});
+        }});
+        
+        // 視窗大小改變時重新調整
+        window.addEventListener('resize', handleResize);
+        
+        // 初始化回到頂部按鈕為隱藏
+        document.querySelector('.back-to-top').style.display = 'none';
+    </script>
 </body>
 </html>
         """
         
         return html_content
+    
+    def _generate_stock_navigation(self, all_results):
+        """
+        生成股票導航列表
+        """
+        navigation_html = ""
+        
+        for result in all_results:
+            symbol = result['symbol']
+            analyzer = result['analyzer']
+            signal_data = result['signal']
+            
+            # 獲取股票名稱信息
+            stock_name = analyzer.long_name if analyzer.long_name and analyzer.long_name != symbol else symbol
+            display_name = f"{symbol}<br><small>{stock_name[:15]}{'...' if len(stock_name) > 15 else ''}</small>"
+            
+            # 獲取信號顏色
+            signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
+            signal_color = '#4CAF50' if '買入' in signal_str else '#f44336' if '賣出' in signal_str else '#ff9800'
+            
+            navigation_html += f"""
+            <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
+               style="border-left: 4px solid {signal_color};">
+                {display_name}
+            </a>
+            """
+        
+        return navigation_html
     
     def _create_enhanced_price_chart(self, symbol, current_price, timeframe_data, stock_display_name=None):
         """
@@ -1091,7 +1478,7 @@ class StockVisualizer:
             technical_chart = self._create_technical_chart(analyzer)
             
             stock_html = f"""
-            <div class="stock-card">
+            <div class="stock-card" id="stock-{symbol}">
                 <div class="stock-header">
                     <h3>{stock_display_name}</h3>
                     <span class="signal-badge signal-{signal_class}">{signal_str.upper()}</span>
