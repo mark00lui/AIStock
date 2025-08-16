@@ -36,7 +36,7 @@ jobs:
       # *** 請將 Main.py 換成您專案的實際啟動檔名 ***
       - name: Run script to generate report 🚀
         run: |
-          python main.py 2330.TW 2317.TW 2382.TW 3231.TW 3019.TW AAPL AMZN GOOGL META MSFT NVDA TSLA TSM UNH MU PANW CRWD TEM VST 0388.HK 0700.HK 9988.HK 2628.HK --save-daily-report
+          python main.py 2330.TW 2317.TW 2382.TW 3231.TW 3019.TW AAPL AMZN GOOGL META MSFT NVDA TSLA TSM AVGO MRVL UNH MU PANW CRWD TEM VST 0388.HK 0700.HK 9988.HK 2628.HK --save-daily-report
 
       # 步驟 5: 準備發佈內容
       - name: Prepare deployment files 📂
