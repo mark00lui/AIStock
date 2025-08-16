@@ -100,6 +100,10 @@ class StockVisualizer:
         summary = result['summary']
         left_data = result['left_data']
         
+        # 獲取股票名稱信息
+        stock_name = analyzer.long_name if analyzer.long_name and analyzer.long_name != symbol else symbol
+        stock_display_name = f"{symbol} - {stock_name}"
+        
         # 獲取數據
         year1_data = left_data.get('timeframes', {}).get('1_year', {}) if left_data else {}
         year2_data = left_data.get('timeframes', {}).get('2_year', {}) if left_data else {}
@@ -115,7 +119,7 @@ class StockVisualizer:
         signal_class = 'buy' if '買入' in signal_str else 'sell' if '賣出' in signal_str else 'hold'
         
         # 創建圖表
-        price_chart = self._create_price_comparison_chart(symbol, current_price, target_price_1y)
+        price_chart = self._create_price_comparison_chart(symbol, current_price, target_price_1y, stock_display_name)
         technical_chart = self._create_technical_chart(analyzer)
         
         current_date = datetime.now().strftime('%Y年%m月%d日')
@@ -236,11 +240,11 @@ class StockVisualizer:
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📊 {symbol} 股票分析報告</h1>
-            <p>技術分析 + 基本面分析綜合評估</p>
-            <p class="report-date">生成日期: {current_date}</p>
-        </div>
+                 <div class="header">
+             <h1>📊 {stock_display_name} 股票分析報告</h1>
+             <p>技術分析 + 基本面分析綜合評估</p>
+             <p class="report-date">生成日期: {current_date}</p>
+         </div>
         
         <div class="analysis-section">
             <div class="analysis-grid">
@@ -551,7 +555,7 @@ class StockVisualizer:
         
         return html_content
     
-    def _create_price_comparison_chart(self, symbol, current_price, target_price):
+    def _create_price_comparison_chart(self, symbol, current_price, target_price, stock_display_name=None):
         """
         創建價格比較圖表 - 可重用函數
         """
@@ -561,6 +565,9 @@ class StockVisualizer:
         
         # 將股票代碼中的點號替換為下劃線，使其成為有效的JavaScript變量名
         safe_symbol = symbol.replace('.', '_')
+        
+        # 使用提供的顯示名稱或默認使用股票代碼
+        chart_title = stock_display_name if stock_display_name else symbol
         
         chart_js = f"""
         const priceData_{safe_symbol} = [
@@ -580,8 +587,8 @@ class StockVisualizer:
             }}
         ];
         
-        const priceLayout_{safe_symbol} = {{
-            title: '{symbol} 價格比較',
+                 const priceLayout_{safe_symbol} = {{
+             title: '{chart_title} 價格比較',
             yaxis: {{
                 title: '價格 ($)'
             }},
@@ -727,8 +734,8 @@ class StockVisualizer:
                 }}
             ];
             
-            const technicalLayout_{safe_symbol} = {{
-                title: '{analyzer.symbol} 技術分析',
+                         const technicalLayout_{safe_symbol} = {{
+                 title: '{analyzer.symbol} - {analyzer.long_name if analyzer.long_name and analyzer.long_name != analyzer.symbol else analyzer.symbol} 技術分析',
                 height: 600,
                 grid: {{
                     rows: 3,
@@ -852,6 +859,10 @@ class StockVisualizer:
             summary = result['summary']
             left_data = result['left_data']
             
+            # 獲取股票名稱信息
+            stock_name = analyzer.long_name if analyzer.long_name and analyzer.long_name != symbol else symbol
+            stock_display_name = f"{symbol} - {stock_name}"
+            
             # 獲取左側分析數據
             year1_data = left_data.get('timeframes', {}).get('1_year', {}) if left_data else {}
             year2_data = left_data.get('timeframes', {}).get('2_year', {}) if left_data else {}
@@ -873,13 +884,13 @@ class StockVisualizer:
             valuation_color = "#4CAF50" if valuation_status == "低估" else "#f44336" if valuation_status == "高估" else "#ff9800"
             
             # 創建圖表
-            price_chart = self._create_price_comparison_chart(symbol, current_price, target_price_1y)
+            price_chart = self._create_price_comparison_chart(symbol, current_price, target_price_1y, stock_display_name)
             technical_chart = self._create_technical_chart(analyzer)
             
             stock_html = f"""
             <div class="stock-card">
                 <div class="stock-header">
-                    <h3>{symbol}</h3>
+                    <h3>{stock_display_name}</h3>
                     <span class="signal-badge signal-{signal_class}">{signal_str.upper()}</span>
                 </div>
                 
