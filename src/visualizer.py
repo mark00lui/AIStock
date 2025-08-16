@@ -108,7 +108,7 @@ class StockVisualizer:
         target_price_1y = year1_data.get('target_mean', 0)
         target_price_2y = year2_data.get('target_mean', 0)
         target_price_3y = year3_data.get('target_mean', 0)
-        eps = year1_data.get('future_eps', 0)
+        eps = year1_data.get('future_eps', 0) if year1_data.get('future_eps') is not None else 0
         
         # 獲取信號
         signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
@@ -555,8 +555,15 @@ class StockVisualizer:
         """
         創建價格比較圖表 - 可重用函數
         """
+        # 確保價格不為0或負數
+        current_price = max(current_price, 0.01)
+        target_price = max(target_price, 0.01)
+        
+        # 將股票代碼中的點號替換為下劃線，使其成為有效的JavaScript變量名
+        safe_symbol = symbol.replace('.', '_')
+        
         chart_js = f"""
-        const priceData_{symbol} = [
+        const priceData_{safe_symbol} = [
             {{
                 x: ['當前價格', '1年目標價'],
                 y: [{current_price}, {target_price}],
@@ -573,7 +580,7 @@ class StockVisualizer:
             }}
         ];
         
-        const priceLayout_{symbol} = {{
+        const priceLayout_{safe_symbol} = {{
             title: '{symbol} 價格比較',
             yaxis: {{
                 title: '價格 ($)'
@@ -587,7 +594,7 @@ class StockVisualizer:
             showlegend: false
         }};
         
-        Plotly.newPlot('price-chart-{symbol}', priceData_{symbol}, priceLayout_{symbol});
+        Plotly.newPlot('price-chart-{symbol}', priceData_{safe_symbol}, priceLayout_{safe_symbol});
         """
         return chart_js
     
@@ -634,8 +641,11 @@ class StockVisualizer:
             macd_signal = df['MACD_Signal'].tolist()
             macd_histogram = df['MACD_Histogram'].tolist()
             
+            # 將股票代碼中的點號替換為下劃線，使其成為有效的JavaScript變量名
+            safe_symbol = analyzer.symbol.replace('.', '_')
+            
             chart_js = f"""
-            const technicalData_{analyzer.symbol} = [
+            const technicalData_{safe_symbol} = [
                 // 股價圖表
                 {{
                     x: {dates},
@@ -717,7 +727,7 @@ class StockVisualizer:
                 }}
             ];
             
-            const technicalLayout_{analyzer.symbol} = {{
+            const technicalLayout_{safe_symbol} = {{
                 title: '{analyzer.symbol} 技術分析',
                 height: 600,
                 grid: {{
@@ -738,7 +748,7 @@ class StockVisualizer:
                 showlegend: false
             }};
             
-            Plotly.newPlot('technical-chart-{analyzer.symbol}', technicalData_{analyzer.symbol}, technicalLayout_{analyzer.symbol});
+            Plotly.newPlot('technical-chart-{analyzer.symbol}', technicalData_{safe_symbol}, technicalLayout_{safe_symbol});
             """
             
             return chart_js
@@ -852,7 +862,7 @@ class StockVisualizer:
             target_price_1y = year1_data.get('target_mean', 0)
             target_price_2y = year2_data.get('target_mean', 0)
             target_price_3y = year3_data.get('target_mean', 0)
-            eps = year1_data.get('future_eps', 0)
+            eps = year1_data.get('future_eps', 0) if year1_data.get('future_eps') is not None else 0
             
             # 獲取信號字符串
             signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
