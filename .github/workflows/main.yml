@@ -54,7 +54,7 @@ jobs:
             [加密貨幣財技股] MSTR SBET BMNR 1428.HK \
             [港股] 0388.HK 0700.HK 2628.HK 9698.HK 9999.HK \
             --save-daily-report \
-            --gemini-api ${{ secrets.GEMINI_API_KEY }}
+            --GEMINI-API ${{ secrets.GEMINI_API_KEY }}
 
       # 步驟 5: 準備發佈內容
       - name: Prepare deployment files 📂
