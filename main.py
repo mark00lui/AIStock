@@ -14,6 +14,7 @@ from datetime import datetime
 from stock_analyzer import StockAnalyzer
 from visualizer import StockVisualizer
 from left_analysis import analyze_stock
+from gemini import GeminiStockAnalyzer
 
 def main():
     parser = argparse.ArgumentParser(description='AIStock 股票訊號分析系統')
@@ -23,6 +24,7 @@ def main():
     parser.add_argument('--plot', action='store_true', help='顯示圖表')
     parser.add_argument('--save', help='儲存圖表到指定路徑')
     parser.add_argument('--save-daily-report', action='store_true', help='儲存每日報告，檔名格式為 YYYY-MM-DD_report.html')
+    parser.add_argument('--GEMINI-API', help='Gemini API 金鑰，啟用AI建議功能')
     
     args = parser.parse_args()
     
@@ -69,6 +71,18 @@ def main():
     # 執行批量分析（無論單一或多支股票都使用批量模式）
     print(f"正在批量分析 {len(valid_symbols)} 支股票...")
     
+    # 初始化Gemini分析器（如果提供API金鑰）
+    gemini_analyzer = None
+    gemini_results = {}
+    if args.GEMINI_API:
+        try:
+            print("🤖 初始化Gemini AI分析器...")
+            gemini_analyzer = GeminiStockAnalyzer(args.GEMINI_API)
+            print("✅ Gemini AI分析器初始化成功")
+        except Exception as e:
+            print(f"❌ Gemini AI分析器初始化失敗: {e}")
+            gemini_analyzer = None
+    
     results = []
     analyzers = []  # 儲存分析器實例用於生成 HTML 報告
     
@@ -89,6 +103,32 @@ def main():
                 })
                 analyzers.append(analyzer)  # 添加到分析器列表
                 print(f"  ✅ {symbol} ({analyzer.long_name}): ${current_signal['price']:.2f} | {current_signal['signal']} | 強度: {current_signal['strength']}")
+                
+                # 執行Gemini AI分析（如果可用）
+                if gemini_analyzer:
+                    try:
+                        print(f"    🤖 正在進行Gemini AI分析...")
+                        gemini_result = gemini_analyzer.analyze_stock(
+                            symbol=symbol,
+                            current_price=current_signal['price'],
+                            company_name=analyzer.long_name
+                        )
+                        
+                        if gemini_result.get('metadata', {}).get('status') == 'success':
+                            gemini_results[symbol] = gemini_result
+                            ai_sentiment = gemini_result.get('analysis_summary', {}).get('overall_sentiment', 'N/A')
+                            ai_action = gemini_result.get('investment_recommendation', {}).get('action', 'N/A')
+                            print(f"    🤖 AI建議: {ai_sentiment} | 動作: {ai_action}")
+                        else:
+                            print(f"    ❌ Gemini AI分析失敗: {gemini_result.get('error', {}).get('message', '未知錯誤')}")
+                    except Exception as e:
+                        print(f"    ❌ Gemini AI分析異常: {e}")
+                
+                # 添加延遲避免API限制
+                if gemini_analyzer and i < len(valid_symbols):
+                    import time
+                    time.sleep(3)
+                    
             else:
                 print(f"  ❌ {symbol}: 分析失敗")
                 results.append({
@@ -163,7 +203,7 @@ def main():
         if args.save_daily_report:
             # 生成每日報告檔名格式：YYYY-MM-DD_report.html
             daily_report_path = f"{datetime.now().strftime('%Y-%m-%d')}_report.html"
-            result = visualizer.create_batch_html_report(analyzers, daily_report_path)
+            result = visualizer.create_batch_html_report(analyzers, daily_report_path, gemini_results)
             if result:
                 print(f"✅ 每日報告已保存: {daily_report_path}")
             else:
@@ -172,7 +212,7 @@ def main():
             save_path = args.save
             if not save_path.endswith('.html'):
                 save_path += '.html'
-            result = visualizer.create_batch_html_report(analyzers, save_path)
+            result = visualizer.create_batch_html_report(analyzers, save_path, gemini_results)
             if result:
                 print(f"✅ 報告已保存: {save_path}")
             else:
@@ -180,7 +220,7 @@ def main():
         else:
             # 默認保存為當前日期報告
             default_path = f"{datetime.now().strftime('%Y-%m-%d')}_default_report.html"
-            result = visualizer.create_batch_html_report(analyzers, default_path)
+            result = visualizer.create_batch_html_report(analyzers, default_path, gemini_results)
             if result:
                 print(f"✅ 默認報告已保存: {default_path}")
             else:
