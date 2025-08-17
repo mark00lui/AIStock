@@ -5,8 +5,6 @@ on:
   # 每天台灣時間早上 8 點執行 (00:00 UTC)
   # 您可以透過 crontab.guru 網站產生自己想要的時間
   schedule:
-    # 台灣時間早上 5:00 (UTC 21:00，前一天晚上 9 點)
-    - cron: '0 21 * * *'
     # 台灣時間下午 5:00 (UTC 9:00，當天早上 9 點)
     - cron: '0 9 * * *'
   # 增加手動觸發選項，方便測試
@@ -40,19 +38,17 @@ jobs:
       - name: Run script to generate report 🚀
         run: |
           python main.py \
-            [AI及SOC] NVDA CRWV AMD MU TSM 2454.TW 2330.TW 2308.TW 6805.TW \
-            [AI雲] AMZN MSFT GOOGL 9988.HK 9888.HK \
+            [AI及SOC] NVDA AMD MU TSM 2454.TW 2330.TW 2308.TW 6805.TW \
+            [AI雲] AMZN MSFT GOOGL 9988.HK \
             [代工] 2317.TW 3231.TW 2382.TW 3706.TW \
             [ASIC] AVGO MRVL 3661.TW  \
-            [特斯拉機器人及飛行器] TSLA RKLB KTOS ONDS 3019.TW 6215.TW 4571.TW 3362.TW 2359.TW\
-            [蘋概股] AAPL 3008.TW 6176.TW 3406.TW 6197.TW 2392.TW  \
-            [網路安全] CSCO PANW FTNT CRWD VRSN \
+            [特斯拉機器人及飛行器] TSLA RKLB 3019.TW 6215.TW 4571.TW 3362.TW 2359.TW \
+            [蘋概股] AAPL 3008.TW \
+            [網路安全] CSCO PANW FTNT CRWD \
             [傳統醫療及AI醫療] UNH TEM HIMS \
             [能源股] LEU CVX VST SMR \
-            [航海王] 2603.TW 2615.TW 2609.TW \
+            [航海王] 2603.TW 2615.TW \
             [金融及穩定幣等AI金融] BAC JPM V MA CRCL 2881.TW 2882.TW 2891.TW 3988.HK \
-            [加密貨幣財技股] MSTR SBET BMNR 1428.HK \
-            [港股] 0388.HK 0700.HK 2628.HK 9698.HK 9999.HK \
             --save-daily-report \
             --GEMINI-API ${{ secrets.GEMINI_API_KEY }}
 
