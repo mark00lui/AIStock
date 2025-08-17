@@ -16,6 +16,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 from stock_analyzer import StockAnalyzer
 from visualizer import StockVisualizer
 from left_analysis import analyze_stock, analyze_multiple_stocks
+from gemini import GeminiStockAnalyzer
 
 def print_header(title):
     """打印標題"""
@@ -379,6 +380,135 @@ def test_html_report_features():
         print(f"❌ HTML 報告測試時發生錯誤: {e}")
         return None
 
+def test_gemini_analysis():
+    """測試 Gemini AI 分析功能"""
+    print_header("Gemini AI 分析測試")
+    
+    try:
+        # 請用戶輸入 API 金鑰
+        api_key = input("請輸入您的 Gemini API 金鑰 (按 Enter 跳過): ").strip()
+        
+        if not api_key:
+            print("⚠️ 跳過 Gemini 測試 (未提供 API 金鑰)")
+            return None
+        
+        # 創建分析器實例
+        analyzer = GeminiStockAnalyzer(api_key)
+        
+        # 測試股票列表
+        test_stocks = [
+            {"symbol": "AAPL", "price": 150.0, "name": "Apple Inc."},
+            {"symbol": "TSLA", "price": 800.0, "name": "Tesla Inc."},
+            {"symbol": "NVDA", "price": 1200.0, "name": "NVIDIA Corporation"}
+        ]
+        
+        print(f"📊 開始分析 {len(test_stocks)} 支股票...")
+        print("🔍 專注於五個核心維度：")
+        print("   1. 未來潛在的重大收購以及成長賽道")
+        print("   2. 新賽道的預計複合成長率")
+        print("   3. 新賽道的營收及獲利佔比")
+        print("   4. 未來1/3/5年的EPS複合成長率")
+        print("   5. 未來1/3/5年股價複合成長率")
+        
+        results = []
+        
+        for i, stock in enumerate(test_stocks, 1):
+            print(f"\n🔍 分析股票 {i}/{len(test_stocks)}: {stock['symbol']}")
+            print(f"📋 分析重點: {get_gemini_analysis_focus(stock['symbol'])}")
+            
+            try:
+                # 進行股票分析
+                result = analyzer.analyze_stock(
+                    symbol=stock['symbol'],
+                    current_price=stock['price'],
+                    company_name=stock['name']
+                )
+                
+                if result.get('metadata', {}).get('status') == 'success':
+                    print(f"✅ {stock['symbol']} 分析成功")
+                    
+                    # 顯示基本分析信息
+                    analysis = result.get('analysis_summary', {})
+                    recommendation = result.get('investment_recommendation', {})
+                    
+                    print(f"   整體情緒: {analysis.get('overall_sentiment', 'N/A')}")
+                    print(f"   信心等級: {analysis.get('confidence_level', 'N/A')}")
+                    print(f"   建議動作: {recommendation.get('action', 'N/A')}")
+                    print(f"   目標價格: {recommendation.get('target_price', 'N/A')}")
+                    
+                    # 顯示未來收購和成長賽道
+                    acquisitions = result.get('future_acquisitions_and_growth_tracks', {})
+                    if acquisitions:
+                        print(f"   🔍 潛在收購: {acquisitions.get('potential_major_acquisitions', [])[:2]}")
+                        print(f"   📈 主要成長賽道: {acquisitions.get('primary_growth_tracks', [])[:2]}")
+                    
+                    # 顯示成長賽道CAGR
+                    growth_cagr = result.get('growth_track_cagr', {})
+                    if growth_cagr:
+                        track_1_3y = growth_cagr.get('track_1_cagr_3y', 'N/A')
+                        track_1_5y = growth_cagr.get('track_1_cagr_5y', 'N/A')
+                        print(f"   📊 賽道1 CAGR: 3年{track_1_3y}, 5年{track_1_5y}")
+                    
+                    # 顯示營收佔比
+                    revenue_contribution = result.get('revenue_profit_contribution', {})
+                    if revenue_contribution:
+                        track_1_3y_share = revenue_contribution.get('track_1_revenue_share_3y', 'N/A')
+                        track_1_5y_share = revenue_contribution.get('track_1_revenue_share_5y', 'N/A')
+                        print(f"   💰 賽道1營收佔比: 3年{track_1_3y_share}, 5年{track_1_5y_share}")
+                    
+                    # 顯示EPS CAGR
+                    eps_forecast = result.get('eps_cagr_forecast', {})
+                    if eps_forecast:
+                        eps_1y = eps_forecast.get('eps_cagr_1y', 'N/A')
+                        eps_3y = eps_forecast.get('eps_cagr_3y', 'N/A')
+                        eps_5y = eps_forecast.get('eps_cagr_5y', 'N/A')
+                        print(f"   📈 EPS CAGR: 1年{eps_1y}, 3年{eps_3y}, 5年{eps_5y}")
+                    
+                    # 顯示股價CAGR
+                    price_forecast = result.get('stock_price_cagr_forecast', {})
+                    if price_forecast:
+                        price_1y = price_forecast.get('price_cagr_1y', 'N/A')
+                        price_3y = price_forecast.get('price_cagr_3y', 'N/A')
+                        price_5y = price_forecast.get('price_cagr_5y', 'N/A')
+                        print(f"   🚀 股價CAGR: 1年{price_1y}, 3年{price_3y}, 5年{price_5y}")
+                    
+                    results.append(result)
+                    
+                else:
+                    print(f"❌ {stock['symbol']} 分析失敗")
+                    error_msg = result.get('error', {}).get('message', '未知錯誤')
+                    print(f"   錯誤信息: {error_msg}")
+                
+                # 添加延遲避免 API 限制
+                if i < len(test_stocks):
+                    print("   ⏳ 等待 3 秒後繼續...")
+                    import time
+                    time.sleep(3)
+                    
+            except Exception as e:
+                print(f"❌ 分析 {stock['symbol']} 時發生異常: {e}")
+        
+        print(f"\n🎉 Gemini AI 分析測試完成！")
+        print(f"✅ 成功分析 {len(results)} 支股票")
+        
+        return results
+        
+    except Exception as e:
+        print(f"❌ Gemini AI 分析測試失敗: {e}")
+        return None
+
+def get_gemini_analysis_focus(symbol):
+    """獲取 Gemini 分析重點說明"""
+    focus_map = {
+        "AAPL": "AI收購、服務業務、AR/VR、健康科技",
+        "TSLA": "Robotaxi、人形機器人、能源業務、自動駕駛",
+        "NVDA": "AI晶片、數據中心、汽車業務、軟體生態",
+        "GOOGL": "AI競賽、Gemini、雲端業務、廣告轉型",
+        "MSFT": "AI整合、OpenAI、Azure、企業軟體",
+        "AMZN": "AWS、電商轉型、AI服務、廣告業務"
+    }
+    return focus_map.get(symbol, "未來收購、成長賽道、複合成長率、營收佔比")
+
 def run_all_tests():
     """運行所有測試"""
     print_header("AIStock 完整功能測試")
@@ -442,6 +572,14 @@ def run_all_tests():
         print(f"❌ HTML 報告功能測試失敗: {e}")
         test_results['html_reports'] = False
     
+    # 8. Gemini AI 分析測試
+    try:
+        gemini_results = test_gemini_analysis()
+        test_results['gemini_analysis'] = gemini_results is not None
+    except Exception as e:
+        print(f"❌ Gemini AI 分析測試失敗: {e}")
+        test_results['gemini_analysis'] = False
+    
     # 顯示測試結果摘要
     print_header("測試結果摘要")
     
@@ -452,7 +590,8 @@ def run_all_tests():
         'batch_analysis': '批量分析',
         'batch_left_analysis': '批量左側分析',
         'main_program': '主程式功能',
-        'html_reports': 'HTML 報告功能'
+        'html_reports': 'HTML 報告功能',
+        'gemini_analysis': 'Gemini AI 分析'
     }
     
     passed = 0
@@ -487,6 +626,7 @@ def main():
     parser.add_argument('--batch-left-analysis', action='store_true', help='測試批量左側分析')
     parser.add_argument('--main-program', action='store_true', help='測試主程式功能')
     parser.add_argument('--html-reports', action='store_true', help='測試 HTML 報告功能')
+    parser.add_argument('--gemini-analysis', action='store_true', help='測試 Gemini AI 分析功能')
     
     args = parser.parse_args()
     
@@ -509,6 +649,8 @@ def main():
             test_main_program()
         if args.html_reports:
             test_html_report_features()
+        if args.gemini_analysis:
+            test_gemini_analysis()
 
 if __name__ == "__main__":
     main() 
