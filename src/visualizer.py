@@ -50,7 +50,7 @@ class StockVisualizer:
             print(f"創建單一股票報告時發生錯誤: {e}")
             return None
     
-    def create_batch_html_report(self, analyzers, output_file, gemini_results=None):
+    def create_batch_html_report(self, analyzers, output_file, gemini_results=None, categories=None):
         """
         創建批次分析HTML報告 - 復用單一股票功能
         """
@@ -67,22 +67,31 @@ class StockVisualizer:
                 # 獲取Gemini AI分析結果
                 gemini_data = gemini_results.get(analyzer.symbol) if gemini_results else None
                 
+                # 獲取分類信息
+                category = "未分類"
+                if categories:
+                    for cat, symbols in categories.items():
+                        if analyzer.symbol in symbols:
+                            category = cat
+                            break
+                
                 result = {
                     'symbol': analyzer.symbol,
                     'analyzer': analyzer,
                     'signal': analyzer.get_current_signal(),
                     'summary': analyzer.get_signal_summary(),
                     'left_data': left_data,
-                    'gemini_data': gemini_data
+                    'gemini_data': gemini_data,
+                    'category': category
                 }
                 all_results.append(result)
-                print(f"已處理 {analyzer.symbol}")
+                print(f"已處理 {analyzer.symbol} (分類: {category})")
             except Exception as e:
                 print(f"處理 {analyzer.symbol} 時發生錯誤: {e}")
                 continue
         
         # 創建HTML內容
-        html_content = self._generate_batch_html(all_results)
+        html_content = self._generate_batch_html(all_results, categories)
         
         # 寫入文件
         try:
@@ -426,14 +435,14 @@ class StockVisualizer:
         
         return html_content
     
-    def _generate_batch_html(self, all_results):
+    def _generate_batch_html(self, all_results, categories=None):
         """
         生成批次分析HTML內容 - 響應式設計版本
         """
         current_date = datetime.now().strftime('%Y年%m月%d日')
         
         # 生成股票導航列表
-        stock_navigation = self._generate_stock_navigation(all_results)
+        stock_navigation = self._generate_stock_navigation(all_results, categories)
         
         # 生成摘要統計
         summary_stats = self._generate_summary_stats(all_results)
@@ -506,7 +515,7 @@ class StockVisualizer:
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             gap: 8px;
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
         }}
         
@@ -962,31 +971,65 @@ class StockVisualizer:
         
         return html_content
     
-    def _generate_stock_navigation(self, all_results):
+    def _generate_stock_navigation(self, all_results, categories=None):
         """
-        生成股票導航列表
+        生成股票導航列表 - 支持分類
         """
         navigation_html = ""
         
-        for result in all_results:
-            symbol = result['symbol']
-            analyzer = result['analyzer']
-            signal_data = result['signal']
-            
-            # 獲取股票名稱信息
-            stock_name = analyzer.long_name if analyzer.long_name and analyzer.long_name != symbol else symbol
-            display_name = f"{symbol}<br><small>{stock_name[:15]}{'...' if len(stock_name) > 15 else ''}</small>"
-            
-            # 獲取信號顏色
-            signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
-            signal_color = '#4CAF50' if '買入' in signal_str else '#f44336' if '賣出' in signal_str else '#ff9800'
-            
-            navigation_html += f"""
-            <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
-               style="border-left: 4px solid {signal_color};">
-                {display_name}
-            </a>
-            """
+        if categories:
+            # 按分類組織股票
+            for category, category_symbols in categories.items():
+                # 添加分類標題
+                navigation_html += f"""
+                <div style="grid-column: 1 / -1; margin: 10px 0 5px 0; padding: 5px 10px; background: rgba(255,255,255,0.1); border-radius: 5px; font-weight: bold; font-size: 0.9em; color: #fff;">
+                    📂 {category}
+                </div>
+                """
+                
+                # 添加該分類下的股票
+                for symbol in category_symbols:
+                    # 找到對應的結果
+                    result = next((r for r in all_results if r['symbol'] == symbol), None)
+                    if result:
+                        analyzer = result['analyzer']
+                        signal_data = result['signal']
+                        
+                        # 獲取股票名稱信息
+                        stock_name = analyzer.long_name if analyzer.long_name and analyzer.long_name != symbol else symbol
+                        display_name = f"{symbol}<br><small>{stock_name[:15]}{'...' if len(stock_name) > 15 else ''}</small>"
+                        
+                        # 獲取信號顏色
+                        signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
+                        signal_color = '#4CAF50' if '買入' in signal_str else '#f44336' if '賣出' in signal_str else '#ff9800'
+                        
+                        navigation_html += f"""
+                        <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
+                           style="border-left: 4px solid {signal_color};">
+                            {display_name}
+                        </a>
+                        """
+        else:
+            # 原有的不分類導航
+            for result in all_results:
+                symbol = result['symbol']
+                analyzer = result['analyzer']
+                signal_data = result['signal']
+                
+                # 獲取股票名稱信息
+                stock_name = analyzer.long_name if analyzer.long_name and analyzer.long_name != symbol else symbol
+                display_name = f"{symbol}<br><small>{stock_name[:15]}{'...' if len(stock_name) > 15 else ''}</small>"
+                
+                # 獲取信號顏色
+                signal_str = signal_data.get('signal', '持有') if isinstance(signal_data, dict) else str(signal_data)
+                signal_color = '#4CAF50' if '買入' in signal_str else '#f44336' if '賣出' in signal_str else '#ff9800'
+                
+                navigation_html += f"""
+                <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
+                   style="border-left: 4px solid {signal_color};">
+                    {display_name}
+                </a>
+                """
         
         return navigation_html
     

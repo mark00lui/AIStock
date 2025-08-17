@@ -28,17 +28,36 @@ def main():
     
     args = parser.parse_args()
     
-    # 處理股票代碼輸入
+    # 處理股票代碼輸入和分類
     symbols = []
+    categories = {}
+    current_category = "未分類"
+    
     for symbol_input in args.symbols:
+        # 檢查是否為分類標記 [CATEGORY]
+        if symbol_input.startswith('[') and symbol_input.endswith(']'):
+            current_category = symbol_input[1:-1]  # 移除方括號
+            continue
+        
         # 支援逗號分隔的多個股票代碼
         if ',' in symbol_input:
-            symbols.extend([s.strip().upper() for s in symbol_input.split(',')])
+            symbol_list = [s.strip().upper() for s in symbol_input.split(',')]
         else:
-            symbols.append(symbol_input.upper())
+            symbol_list = [symbol_input.upper()]
+        
+        # 添加到分類中
+        for symbol in symbol_list:
+            if symbol not in symbols:  # 避免重複
+                symbols.append(symbol)
+                if current_category not in categories:
+                    categories[current_category] = []
+                categories[current_category].append(symbol)
     
-    # 移除重複的股票代碼
-    symbols = list(dict.fromkeys(symbols))
+    # 顯示分類結果
+    print("=== 股票分類結果 ===")
+    for category, category_symbols in categories.items():
+        print(f"📂 {category}: {', '.join(category_symbols)}")
+    print()
     
     # 驗證股票代碼
     valid_symbols = []
@@ -203,7 +222,7 @@ def main():
         if args.save_daily_report:
             # 生成每日報告檔名格式：YYYY-MM-DD_report.html
             daily_report_path = f"{datetime.now().strftime('%Y-%m-%d')}_report.html"
-            result = visualizer.create_batch_html_report(analyzers, daily_report_path, gemini_results)
+            result = visualizer.create_batch_html_report(analyzers, daily_report_path, gemini_results, categories)
             if result:
                 print(f"✅ 每日報告已保存: {daily_report_path}")
             else:
@@ -212,7 +231,7 @@ def main():
             save_path = args.save
             if not save_path.endswith('.html'):
                 save_path += '.html'
-            result = visualizer.create_batch_html_report(analyzers, save_path, gemini_results)
+            result = visualizer.create_batch_html_report(analyzers, save_path, gemini_results, categories)
             if result:
                 print(f"✅ 報告已保存: {save_path}")
             else:
@@ -220,7 +239,7 @@ def main():
         else:
             # 默認保存為當前日期報告
             default_path = f"{datetime.now().strftime('%Y-%m-%d')}_default_report.html"
-            result = visualizer.create_batch_html_report(analyzers, default_path, gemini_results)
+            result = visualizer.create_batch_html_report(analyzers, default_path, gemini_results, categories)
             if result:
                 print(f"✅ 默認報告已保存: {default_path}")
             else:
