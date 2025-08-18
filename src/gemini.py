@@ -1026,10 +1026,10 @@ def test_gemini_analyzer():
                 error_msg = result.get('error', {}).get('message', '未知錯誤')
                 print(f"   錯誤信息: {error_msg}")
             
-            # 添加延遲避免 API 限制
+            # 添加延遲避免 API 限制 (2分鐘)
             if i < len(test_stocks):
-                print("   ⏳ 等待 3 秒後繼續...")
-                time.sleep(3)
+                print("   ⏳ 等待 2 分鐘避免 API 速率限制...")
+                time.sleep(120)  # 2分鐘 = 120秒
                 
         except Exception as e:
             print(f"❌ 分析 {stock['symbol']} 時發生異常: {e}")
@@ -1097,10 +1097,10 @@ def test_gemini_analyzer():
                 error_msg = result.get('error', {}).get('message', '未知錯誤')
                 print(f"   錯誤信息: {error_msg}")
             
-            # 添加延遲避免 API 限制
+            # 添加延遲避免 API 限制 (2分鐘)
             if i < len(test_stocks):
-                print("   ⏳ 等待 3 秒後繼續...")
-                time.sleep(3)
+                print("   ⏳ 等待 2 分鐘避免 API 速率限制...")
+                time.sleep(120)  # 2分鐘 = 120秒
                 
         except Exception as e:
             print(f"❌ 分析 {stock['symbol']} 時發生異常: {e}")
