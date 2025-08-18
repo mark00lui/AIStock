@@ -40,7 +40,7 @@ jobs:
       - name: Run script to generate report 🚀
         run: |
           python main.py \
-            [AI及SOC] NVDA AMD MU TSM 2454.TW 2330.TW 2308.TW 6805.TW \
+            [AI及SOC] NVDA AMD MU 8299.TW TSM 2454.TW 2330.TW 2308.TW 6805.TW \
             [AI雲] AMZN MSFT GOOGL 9988.HK \
             [代工] 2317.TW 3231.TW 2382.TW 3706.TW \
             [ASIC] AVGO MRVL 3661.TW  \
