@@ -41,7 +41,7 @@ jobs:
         run: |
           python main.py \
             [重倉股-AI及SOC] NVDA AMD MU TSM 2454.TW 2330.TW 2308.TW 6805.TW \
-            [重倉股-AI雲] AMZN MSFT GOOGL 9988.HK \
+            [重倉股-AI雲] AMZN MSFT GOOGL META 9988.HK \
             [重倉股-網路安全] CSCO PANW FTNT CRWD \
             [Q4上漲-代工] 2317.TW 6669.TW 3231.TW 2382.TW 3706.TW 2376.TW 2357.TW \
             [抱5年-ASIC] AVGO MRVL 3661.TW  \
