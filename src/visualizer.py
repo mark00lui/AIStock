@@ -1727,49 +1727,24 @@ class StockVisualizer:
     
     def _generate_gemini_ai_panel(self, symbol, gemini_data):
         """
-        生成Gemini AI建議面板
+        生成Gemini AI建議面板（精簡版）
         """
         if not gemini_data:
             return ""
         
-        # 提取Gemini分析數據
-        analysis_summary = gemini_data.get('analysis_summary', {})
-        future_acquisitions = gemini_data.get('future_acquisitions_and_growth_tracks', {})
-        growth_cagr = gemini_data.get('growth_track_cagr', {})
-        revenue_contribution = gemini_data.get('revenue_profit_contribution', {})
-        eps_forecast = gemini_data.get('eps_cagr_forecast', {})
-        price_forecast = gemini_data.get('stock_price_cagr_forecast', {})
-        investment_rec = gemini_data.get('investment_recommendation', {})
+        # 提取精簡的Gemini分析數據
+        price_forecast = gemini_data.get('price_forecast', {})
+        recent_news = gemini_data.get('recent_news', 'N/A')
+        ai_judgment = gemini_data.get('ai_judgment', 'N/A')
+        sentiment = gemini_data.get('sentiment', 'N/A')
         
         # 格式化數據
-        overall_sentiment = analysis_summary.get('overall_sentiment', 'N/A')
-        confidence_level = analysis_summary.get('confidence_level', 'N/A')
-        risk_level = analysis_summary.get('risk_level', 'N/A')
-        
-        ai_action = investment_rec.get('action', 'N/A')
-        ai_target_price = investment_rec.get('target_price', 'N/A')
-        ai_conviction = investment_rec.get('conviction_level', 'N/A')
-        
-        # 獲取潛在收購和成長賽道
-        potential_acquisitions = future_acquisitions.get('potential_major_acquisitions', [])
-        primary_growth_tracks = future_acquisitions.get('primary_growth_tracks', [])
-        
-        # 獲取CAGR預測
-        eps_1y = eps_forecast.get('eps_cagr_1y', 'N/A')
-        eps_3y = eps_forecast.get('eps_cagr_3y', 'N/A')
-        eps_5y = eps_forecast.get('eps_cagr_5y', 'N/A')
-        
-        price_1y = price_forecast.get('price_cagr_1y', 'N/A')
-        price_3y = price_forecast.get('price_cagr_3y', 'N/A')
-        price_5y = price_forecast.get('price_cagr_5y', 'N/A')
-        
-        # 獲取營收佔比
-        track_1_3y_share = revenue_contribution.get('track_1_revenue_share_3y', 'N/A')
-        track_1_5y_share = revenue_contribution.get('track_1_revenue_share_5y', 'N/A')
+        price_1y = price_forecast.get('price_1y', 'N/A')
+        price_3y = price_forecast.get('price_3y', 'N/A')
+        price_5y = price_forecast.get('price_5y', 'N/A')
         
         # 設置顏色
-        sentiment_color = '#4CAF50' if '看漲' in overall_sentiment else '#F44336' if '看跌' in overall_sentiment else '#FF9800'
-        action_color = '#4CAF50' if '買入' in ai_action else '#F44336' if '賣出' in ai_action else '#FF9800'
+        sentiment_color = '#4CAF50' if '看漲' in sentiment else '#F44336' if '看跌' in sentiment else '#FF9800'
         
         return f"""
                     <div class="analysis-panel" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
@@ -1777,76 +1752,43 @@ class StockVisualizer:
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="label">AI情緒:</span>
-                                <span class="value" style="color: {sentiment_color};">{overall_sentiment}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">AI建議:</span>
-                                <span class="value" style="color: {action_color};">{ai_action}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">目標價格:</span>
-                                <span class="value">{ai_target_price}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">信心等級:</span>
-                                <span class="value">{ai_conviction}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">風險等級:</span>
-                                <span class="value">{risk_level}</span>
+                                <span class="value" style="color: {sentiment_color};">{sentiment}</span>
                             </div>
                         </div>
                         
-                        <!-- 成長賽道分析 -->
+                        <!-- 股價預測 -->
                         <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
-                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">🚀 未來成長賽道</h5>
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📈 未來股價預測</h5>
                             <div style="font-size: 0.85em; line-height: 1.4;">
-                                <div style="margin-bottom: 8px;">
-                                    <span style="font-weight: bold;">主要成長賽道:</span>
-                                    <div style="margin-left: 10px; margin-top: 5px;">
-                                        {''.join([f'<div style="margin-bottom: 3px;">• {track}</div>' for track in primary_growth_tracks[:3]])}
-                                    </div>
-                                </div>
-                                <div style="margin-bottom: 8px;">
-                                    <span style="font-weight: bold;">潛在收購目標:</span>
-                                    <div style="margin-left: 10px; margin-top: 5px;">
-                                        {''.join([f'<div style="margin-bottom: 3px;">• {acq}</div>' for acq in potential_acquisitions[:3]])}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- CAGR預測 -->
-                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
-                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📈 複合成長率預測</h5>
-                            <div style="font-size: 0.85em; line-height: 1.4;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                                     <div>
-                                        <span style="font-weight: bold;">EPS CAGR:</span>
-                                        <div style="margin-left: 10px; margin-top: 3px;">
-                                            <div>1年: {eps_1y}</div>
-                                            <div>3年: {eps_3y}</div>
-                                            <div>5年: {eps_5y}</div>
-                                        </div>
+                                        <span style="font-weight: bold;">1年後:</span>
+                                        <div style="margin-top: 3px;">{price_1y}</div>
                                     </div>
                                     <div>
-                                        <span style="font-weight: bold;">股價CAGR:</span>
-                                        <div style="margin-left: 10px; margin-top: 3px;">
-                                            <div>1年: {price_1y}</div>
-                                            <div>3年: {price_3y}</div>
-                                            <div>5年: {price_5y}</div>
-                                        </div>
+                                        <span style="font-weight: bold;">3年後:</span>
+                                        <div style="margin-top: 3px;">{price_3y}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">5年後:</span>
+                                        <div style="margin-top: 3px;">{price_5y}</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <!-- 營收佔比 -->
+                        <!-- 重大新聞 -->
                         <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
-                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">💰 新賽道營收佔比</h5>
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📰 近期重大新聞</h5>
                             <div style="font-size: 0.85em; line-height: 1.4;">
-                                <div>3年後: {track_1_3y_share}</div>
-                                <div>5年後: {track_1_5y_share}</div>
+                                <div style="margin-bottom: 8px;">
+                                    <span style="font-weight: bold;">新聞:</span>
+                                    <div style="margin-top: 3px;">{recent_news}</div>
+                                </div>
+                                <div>
+                                    <span style="font-weight: bold;">AI判斷:</span>
+                                    <div style="margin-top: 3px;">{ai_judgment}</div>
+                                </div>
                             </div>
                         </div>
                     </div>

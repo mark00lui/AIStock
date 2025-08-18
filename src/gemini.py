@@ -480,11 +480,61 @@ class GeminiStockAnalyzer:
         except Exception as e:
             logger.error(f"分析股票 {symbol} 時發生錯誤: {e}")
             return self._create_error_response(f"分析過程發生錯誤: {str(e)}")
+
+    def analyze_stock_batch(self, symbols: List[str], current_prices: Dict[str, float], company_names: Dict[str, str] = None) -> Dict[str, Any]:
+        """
+        批量分析多支股票
+        
+        Args:
+            symbols (List[str]): 股票代碼列表
+            current_prices (Dict[str, float]): 股票代碼到當前價格的映射
+            company_names (Dict[str, str], optional): 股票代碼到公司名稱的映射
+            
+        Returns:
+            Dict[str, Any]: 每支股票的分析結果
+        """
+        try:
+            # 構建批量分析提示詞
+            prompt = self._build_batch_analysis_prompt(symbols, current_prices, company_names)
+            
+            # 發送 API 請求
+            response = self._make_api_request(prompt)
+            
+            if response is None:
+                return {symbol: self._create_error_response("API 請求失敗") for symbol in symbols}
+            
+            # 提取 JSON 數據
+            json_data = self._extract_batch_json_from_response(response, symbols)
+            
+            if json_data is None:
+                return {symbol: self._create_error_response("JSON 解析失敗") for symbol in symbols}
+            
+            # 為每個股票添加元數據
+            results = {}
+            for symbol in symbols:
+                if symbol in json_data.get("stocks", {}):
+                    stock_data = json_data["stocks"][symbol]
+                    stock_data["metadata"] = {
+                        "status": "success",
+                        "timestamp": datetime.now().isoformat(),
+                        "symbol": symbol,
+                        "current_price": current_prices.get(symbol, 0)
+                    }
+                    results[symbol] = stock_data
+                else:
+                    results[symbol] = self._create_error_response("未找到分析結果")
+            
+            logger.info(f"成功批量分析 {len(symbols)} 支股票")
+            return results
+            
+        except Exception as e:
+            logger.error(f"批量分析股票時發生錯誤: {e}")
+            return {symbol: self._create_error_response(f"批量分析錯誤: {str(e)}") for symbol in symbols}
     
     def _build_analysis_prompt(self, symbol: str, current_price: float = None, 
                               company_name: str = None) -> str:
         """
-        構建專注於社群情緒、財報和未來發展的分析提示詞
+        構建精簡的單一股票分析提示詞
         
         Args:
             symbol (str): 股票代碼
@@ -492,144 +542,65 @@ class GeminiStockAnalyzer:
             company_name (str, optional): 公司名稱
             
         Returns:
-            str: 完整的提示詞
+            str: 精簡的提示詞
         """
         company_info = f" ({company_name})" if company_name else ""
         price_info = f" 當前價格: ${current_price}" if current_price else ""
         
-        # 根據股票代碼提供特定的分析重點
-        company_specific_focus = self._get_company_specific_focus(symbol)
+        prompt = f"""
+請分析 {symbol}{company_info}{price_info}，提供精簡的投資分析。
+
+請返回以下JSON格式：
+{{
+    "symbol": "{symbol}",
+    "price_forecast": {{
+        "price_1y": "一年後股價範圍",
+        "price_3y": "三年後股價範圍", 
+        "price_5y": "五年後股價範圍"
+    }},
+    "recent_news": "近期最重大新聞消息（30字內）",
+    "ai_judgment": "AI對該消息的判斷（30字內）",
+    "sentiment": "看漲/看跌/中性"
+}}
+
+只返回JSON格式，不要其他說明。
+"""
+        
+        return prompt
+
+    def _build_batch_analysis_prompt(self, symbols: List[str], current_prices: Dict[str, float], 
+                                   company_names: Dict[str, str] = None) -> str:
+        """
+        構建批量分析提示詞
+        
+        Args:
+            symbols (List[str]): 股票代碼列表
+            current_prices (Dict[str, float]): 股票代碼到當前價格的映射
+            company_names (Dict[str, str], optional): 股票代碼到公司名稱的映射
+            
+        Returns:
+            str: 批量分析提示詞
+        """
+        # 構建股票列表
+        stock_list = ""
+        for symbol in symbols:
+            price = current_prices.get(symbol, "N/A")
+            company_name = company_names.get(symbol, "") if company_names else ""
+            stock_list += f"- {symbol}{' (' + company_name + ')' if company_name else ''}: ${price}\n"
         
         prompt = f"""
- 請作為一位資深的股票分析師，對 {symbol}{company_info}{price_info} 進行精簡而深入的投資分析。
- 
- 分析重點要求：
- 1. 專注於未來潛在的重大收購和成長賽道
- 2. 重點分析新賽道的複合成長率和市場佔比
- 3. 提供具體的 EPS 和股價複合成長率預測
- 4. 避免冗長的傳統分析，聚焦核心成長驅動力
- 
- {company_specific_focus}
- 
- 分析時請特別關注以下五個核心維度：
- 
- 1. 未來潛在的重大收購以及成長賽道：
-    - 公司可能收購的目標企業和戰略意義
-    - 主要成長賽道的市場規模和競爭優勢
-    - 新技術和產品線的發展前景
-    - 戰略合作和聯盟的可能性
- 
- 2. 新賽道的預計複合成長率：
-    - 各成長賽道的三年和五年複合成長率預測
-    - 市場滲透率和採用速度分析
-    - 技術成熟度和商業化時間表
-    - 成長驅動因素和催化劑
- 
- 3. 新賽道的營收及獲利佔比：
-    - 各賽道在總營收中的佔比預測
-    - 新賽道的利潤率貢獻分析
-    - 營收結構轉型的時間表
-    - 獲利質量改善的潛力
- 
- 4. 未來1/3/5年的EPS複合成長率：
-    - 基於新賽道發展的EPS成長預測
-    - 利潤率擴張和成本控制影響
-    - 資本支出和研發投入的影響
-    - 不同情境下的EPS成長範圍
- 
- 5. 未來1/3/5年股價複合成長率：
-    - 基於基本面改善的股價成長預測
-    - 估值倍數擴張的可能性
-    - 市場情緒和投資者認知的變化
-    - 風險調整後的股價成長預期
- 
- 請以以下精簡的 JSON 格式返回分析結果，所有分析內容都必須使用中文表達：
+請同時分析以下股票，為每支股票提供精簡的投資分析：
 
- {{
-     "symbol": "{symbol}",
-     "analysis_summary": {{
-         "overall_sentiment": "看漲/看跌/中性",
-         "confidence_level": "高/中/低",
-         "risk_level": "低/中/高",
-         "time_horizon": "短期/中期/長期"
-     }},
-     "future_acquisitions_and_growth_tracks": {{
-         "potential_major_acquisitions": ["潛在收購目標1", "潛在收購目標2", "潛在收購目標3"],
-         "acquisition_strategic_importance": "收購的戰略意義和影響分析",
-         "primary_growth_tracks": ["主要成長賽道1", "主要成長賽道2", "主要成長賽道3"],
-         "growth_track_market_size": "成長賽道市場規模預估",
-         "competitive_advantages": ["競爭優勢1", "競爭優勢2", "競爭優勢3"],
-         "strategic_partnerships": ["戰略合作1", "戰略合作2"]
-     }},
-     "growth_track_cagr": {{
-         "track_1_cagr_3y": "成長賽道1三年複合成長率（百分比）",
-         "track_1_cagr_5y": "成長賽道1五年複合成長率（百分比）",
-         "track_2_cagr_3y": "成長賽道2三年複合成長率（百分比）",
-         "track_2_cagr_5y": "成長賽道2五年複合成長率（百分比）",
-         "track_3_cagr_3y": "成長賽道3三年複合成長率（百分比）",
-         "track_3_cagr_5y": "成長賽道3五年複合成長率（百分比）",
-         "market_penetration_analysis": "市場滲透率分析",
-         "commercialization_timeline": "商業化時間表",
-         "growth_catalysts": ["成長催化劑1", "成長催化劑2", "成長催化劑3"]
-     }},
-     "revenue_profit_contribution": {{
-         "track_1_revenue_share_3y": "成長賽道1三年後營收佔比（百分比）",
-         "track_1_revenue_share_5y": "成長賽道1五年後營收佔比（百分比）",
-         "track_2_revenue_share_3y": "成長賽道2三年後營收佔比（百分比）",
-         "track_2_revenue_share_5y": "成長賽道2五年後營收佔比（百分比）",
-         "track_3_revenue_share_3y": "成長賽道3三年後營收佔比（百分比）",
-         "track_3_revenue_share_5y": "成長賽道3五年後營收佔比（百分比）",
-         "profit_contribution_analysis": "新賽道利潤率貢獻分析",
-         "revenue_structure_transformation": "營收結構轉型時間表",
-         "profit_quality_improvement": "獲利質量改善潛力"
-     }},
-     "eps_cagr_forecast": {{
-         "eps_cagr_1y": "一年EPS複合成長率（百分比）",
-         "eps_cagr_3y": "三年EPS複合成長率（百分比）",
-         "eps_cagr_5y": "五年EPS複合成長率（百分比）",
-         "eps_growth_drivers": ["EPS成長驅動力1", "EPS成長驅動力2", "EPS成長驅動力3"],
-         "profit_margin_expansion": "利潤率擴張預期",
-         "capex_rd_impact": "資本支出和研發投入影響",
-         "eps_scenarios": {{
-             "bull_case_eps_cagr": "樂觀情境EPS複合成長率",
-             "base_case_eps_cagr": "中性情境EPS複合成長率",
-             "bear_case_eps_cagr": "保守情境EPS複合成長率"
-         }}
-     }},
-     "stock_price_cagr_forecast": {{
-         "price_cagr_1y": "一年股價複合成長率（百分比）",
-         "price_cagr_3y": "三年股價複合成長率（百分比）",
-         "price_cagr_5y": "五年股價複合成長率（百分比）",
-         "valuation_multiple_expansion": "估值倍數擴張可能性",
-         "market_sentiment_impact": "市場情緒和投資者認知變化",
-         "risk_adjusted_growth": "風險調整後股價成長預期",
-         "price_scenarios": {{
-             "bull_case_price_cagr": "樂觀情境股價複合成長率",
-             "base_case_price_cagr": "中性情境股價複合成長率",
-             "bear_case_price_cagr": "保守情境股價複合成長率"
-         }}
-     }},
-     "investment_recommendation": {{
-         "action": "買入/持有/賣出",
-         "conviction_level": "高/中/低",
-         "target_price": "具體價格",
-         "time_horizon": "短期/中期/長期"
-     }}
-         }}
+{stock_list}
 
- 分析要求：
- 1. 專注於未來潛在的重大收購和成長賽道分析
- 2. 提供具體的新賽道複合成長率預測
- 3. 分析新賽道的營收和獲利佔比變化
- 4. 給出1/3/5年的EPS複合成長率預測
- 5. 提供1/3/5年的股價複合成長率預測
- 6. 分析必須基於最新的市場動態和公司發展
- 7. 避免冗長的傳統分析，聚焦核心成長驅動力
- 8. 返回格式必須是有效的 JSON，所有描述必須具體
- 9. 所有分析結果都必須使用中文表達
- 10. 提供樂觀、中性、保守三種情境的預測
- 
- 只返回 JSON 格式的結果，不要包含其他文字說明。
+請返回以下JSON格式：
+{{
+    "stocks": {{
+        {', '.join([f'"{symbol}": {{"symbol": "{symbol}", "price_forecast": {{"price_1y": "一年後股價範圍", "price_3y": "三年後股價範圍", "price_5y": "五年後股價範圍"}}, "recent_news": "近期最重大新聞消息（30字內）", "ai_judgment": "AI對該消息的判斷（30字內）", "sentiment": "看漲/看跌/中性"}}' for symbol in symbols])}
+    }}
+}}
+
+只返回JSON格式，不要其他說明。
 """
         
         return prompt
@@ -898,6 +869,173 @@ class GeminiStockAnalyzer:
         except Exception as e:
             logger.error(f"分析 {symbol} 新聞時發生錯誤: {e}")
             return self._create_error_response(f"新聞分析錯誤: {str(e)}")
+
+    def _extract_batch_json_from_response(self, response: Dict[str, Any], symbols: List[str]) -> Optional[Dict[str, Any]]:
+        """
+        從批量分析響應中提取 JSON 數據
+        
+        Args:
+            response (Dict[str, Any]): Gemini API 響應
+            symbols (List[str]): 股票代碼列表
+            
+        Returns:
+            Optional[Dict[str, Any]]: 解析的批量 JSON 數據或 None
+        """
+        try:
+            if 'candidates' in response and len(response['candidates']) > 0:
+                content = response['candidates'][0]['content']
+                if 'parts' in content and len(content['parts']) > 0:
+                    text = content['parts'][0]['text']
+                    
+                    # 嘗試提取 JSON 部分
+                    start_idx = text.find('{')
+                    end_idx = text.rfind('}') + 1
+                    
+                    if start_idx != -1 and end_idx != 0:
+                        json_str = text[start_idx:end_idx]
+                        
+                        # 首先嘗試直接解析
+                        try:
+                            return json.loads(json_str)
+                        except json.JSONDecodeError as e:
+                            logger.error(f"批量JSON直接解析失敗: {e}")
+                            
+                            # 嘗試簡單的修復
+                            fixed_json = self._simple_json_fix(json_str)
+                            try:
+                                return json.loads(fixed_json)
+                            except json.JSONDecodeError as e2:
+                                logger.error(f"批量JSON簡單修復後仍無法解析: {e2}")
+                                
+                                # 嘗試更激進的修復
+                                aggressive_json = self._aggressive_json_fix(json_str)
+                                try:
+                                    return json.loads(aggressive_json)
+                                except json.JSONDecodeError as e3:
+                                    logger.error(f"批量JSON激進修復後仍無法解析: {e3}")
+                                    
+                                    # 最後嘗試：手動構建基本結構
+                                    return self._build_batch_fallback_json(symbols, text)
+                    else:
+                        logger.error("批量響應中未找到有效的 JSON 格式")
+                        return None
+            else:
+                logger.error("批量API 響應格式不正確")
+                return None
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"批量JSON 解析錯誤: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"提取批量JSON 時發生錯誤: {e}")
+            return None
+
+    def _build_batch_fallback_json(self, symbols: List[str], original_text: str) -> Dict[str, Any]:
+        """
+        構建批量分析的備用 JSON 結構
+        
+        Args:
+            symbols (List[str]): 股票代碼列表
+            original_text (str): 原始文本
+            
+        Returns:
+            Dict[str, Any]: 備用批量 JSON 結構
+        """
+        logger.warning(f"使用批量備用 JSON 結構 for {len(symbols)} 支股票")
+        
+        stocks_data = {}
+        for symbol in symbols:
+            # 從原始文本中提取一些基本信息
+            sentiment = "中性"
+            if "看漲" in original_text or "bullish" in original_text.lower():
+                sentiment = "看漲"
+            elif "看跌" in original_text or "bearish" in original_text.lower():
+                sentiment = "看跌"
+            
+            stocks_data[symbol] = {
+                "symbol": symbol,
+                "price_forecast": {
+                    "price_1y": "一年後股價範圍",
+                    "price_3y": "三年後股價範圍",
+                    "price_5y": "五年後股價範圍"
+                },
+                "recent_news": "近期最重大新聞消息（30字內）",
+                "ai_judgment": "AI對該消息的判斷（30字內）",
+                "sentiment": sentiment
+            }
+        
+        return {"stocks": stocks_data}
+
+
+def test_gemini_analyzer():
+    """
+    測試 Gemini 分析器
+    """
+    print("🧪 開始測試 Gemini 股票分析器...")
+    
+    # 請替換為您的實際 API 金鑰
+    api_key = input("請輸入您的 Gemini API 金鑰: ").strip()
+    
+    if not api_key:
+        print("❌ 未提供 API 金鑰，測試終止")
+        return
+    
+    # 創建分析器實例
+    analyzer = GeminiStockAnalyzer(api_key)
+    
+    # 測試股票列表
+    test_stocks = [
+        {"symbol": "AAPL", "price": 150.0, "name": "Apple Inc."},
+        {"symbol": "GOOGL", "price": 2800.0, "name": "Alphabet Inc."},
+        {"symbol": "TSLA", "price": 800.0, "name": "Tesla Inc."}
+    ]
+    
+    print(f"\n📊 開始分析 {len(test_stocks)} 支股票...")
+    
+    for i, stock in enumerate(test_stocks, 1):
+        print(f"\n🔍 分析股票 {i}/{len(test_stocks)}: {stock['symbol']}")
+        
+        try:
+            # 進行股票分析
+            result = analyzer.analyze_stock(
+                symbol=stock['symbol'],
+                current_price=stock['price'],
+                company_name=stock['name']
+            )
+            
+            if result.get('metadata', {}).get('status') == 'success':
+                print(f"✅ {stock['symbol']} 分析成功")
+                
+                # 顯示關鍵信息
+                analysis = result.get('analysis_summary', {})
+                recommendation = result.get('investment_recommendation', {})
+                
+                print(f"   整體情緒: {analysis.get('overall_sentiment', 'N/A')}")
+                print(f"   信心等級: {analysis.get('confidence_level', 'N/A')}")
+                print(f"   建議動作: {recommendation.get('action', 'N/A')}")
+                print(f"   目標價格: {recommendation.get('target_price', 'N/A')}")
+                
+                # 保存結果到文件
+                filename = f"gemini_analysis_{stock['symbol']}.json"
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump(result, f, ensure_ascii=False, indent=2)
+                print(f"   📄 結果已保存到: {filename}")
+                
+            else:
+                print(f"❌ {stock['symbol']} 分析失敗")
+                error_msg = result.get('error', {}).get('message', '未知錯誤')
+                print(f"   錯誤信息: {error_msg}")
+            
+            # 添加延遲避免 API 限制
+            if i < len(test_stocks):
+                print("   ⏳ 等待 3 秒後繼續...")
+                time.sleep(3)
+                
+        except Exception as e:
+            print(f"❌ 分析 {stock['symbol']} 時發生異常: {e}")
+    
+    print(f"\n🎉 Gemini 分析器測試完成！")
+    print("📁 請檢查當前目錄中的 JSON 文件查看詳細結果")
 
 
 def test_gemini_analyzer():
