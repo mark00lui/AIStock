@@ -40,17 +40,19 @@ jobs:
       - name: Run script to generate report 🚀
         run: |
           python main.py \
-            [AI及SOC] NVDA AMD MU 8299.TW TSM 2454.TW 2330.TW 2308.TW 6805.TW \
-            [AI雲] AMZN MSFT GOOGL 9988.HK \
-            [代工] 2317.TW 3231.TW 2382.TW 3706.TW \
-            [ASIC] AVGO MRVL 3661.TW  \
-            [特斯拉機器人及飛行器] TSLA RKLB 3019.TW 6215.TW 4571.TW 3362.TW 2359.TW \
-            [蘋概股] AAPL 3008.TW \
-            [網路安全] CSCO PANW FTNT CRWD \
-            [傳統醫療及AI醫療] UNH TEM HIMS \
-            [能源股] LEU CVX VST SMR \
-            [航海王] 2603.TW 2615.TW \
-            [金融及穩定幣等AI金融] BAC JPM V MA CRCL 2881.TW 2882.TW 2891.TW 3988.HK \
+            [重倉股-AI及SOC] NVDA AMD MU TSM 2454.TW 2330.TW 2308.TW 6805.TW \
+            [重倉股-AI雲] AMZN MSFT GOOGL 9988.HK \
+            [重倉股-網路安全] CSCO PANW FTNT CRWD \
+            [Q4上漲-代工] 2317.TW 6669.TW 3231.TW 2382.TW 3706.TW 2376.TW 2357.TW \
+            [抱5年-ASIC] AVGO MRVL 3661.TW  \
+            [抱5年-特斯拉機器人及飛行器] TSLA RKLB 3019.TW 6215.TW 4571.TW 3362.TW 2359.TW \
+            [高危險-矽光子] 2345.TW 6223.TW 3081.TW 3363.TW 3450.TW 4979.TW 3163.TW \
+            [長期不振-半導體代理商] 8299.TW 8112.TW \
+            [慢成長-蘋概股] AAPL 3008.TW 2392.TW 6197.TW \
+            [高度不定性-傳統醫療及AI醫療] UNH TEM HIMS \
+            [高度不定性-能源股] LEU CVX VST SMR \
+            [年初買六月賣-航海王] 2603.TW 2615.TW \
+            [金融及穩定幣等AI金融] BAC JPM V MA SOFI CRCL 2881.TW 2882.TW 2891.TW 3988.HK MSTR SBET BMNR MARA \
             --save-daily-report \
             --GEMINI-API ${{ secrets.GEMINI_API_KEY }}
 
