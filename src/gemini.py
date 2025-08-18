@@ -35,57 +35,100 @@ class GeminiStockAnalyzer:
             "Content-Type": "application/json"
         }
         
-    def _make_api_request(self, prompt: str) -> Optional[Dict[str, Any]]:
+    def _make_api_request(self, prompt: str, max_retries: int = 3) -> Optional[Dict[str, Any]]:
         """
-        發送 API 請求到 Gemini
+        發送 API 請求到 Gemini，包含重試機制
         
         Args:
             prompt (str): 發送給 Gemini 的提示詞
+            max_retries (int): 最大重試次數
             
         Returns:
             Optional[Dict[str, Any]]: API 響應或 None
         """
-        try:
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {
-                                "text": prompt
-                            }
-                        ]
+        for attempt in range(max_retries + 1):
+            try:
+                payload = {
+                    "contents": [
+                        {
+                            "parts": [
+                                {
+                                    "text": prompt
+                                }
+                            ]
+                        }
+                    ],
+                    "generationConfig": {
+                        "temperature": 0.7,
+                        "topK": 40,
+                        "topP": 0.95,
+                        "maxOutputTokens": 2048
                     }
-                ],
-                "generationConfig": {
-                    "temperature": 0.7,
-                    "topK": 40,
-                    "topP": 0.95,
-                    "maxOutputTokens": 2048
                 }
-            }
-            
-            url = f"{self.base_url}?key={self.api_key}"
-            
-            logger.info("發送請求到 Gemini API...")
-            response = requests.post(url, headers=self.headers, json=payload, timeout=30)
-            
-            if response.status_code == 200:
-                result = response.json()
-                logger.info("Gemini API 請求成功")
-                return result
-            else:
-                logger.error(f"API 請求失敗: {response.status_code} - {response.text}")
-                return None
                 
-        except requests.exceptions.Timeout:
-            logger.error("API 請求超時")
-            return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"API 請求異常: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"未知錯誤: {e}")
-            return None
+                url = f"{self.base_url}?key={self.api_key}"
+                
+                if attempt == 0:
+                    logger.info("發送請求到 Gemini API...")
+                else:
+                    logger.info(f"重試請求到 Gemini API... (第 {attempt + 1} 次嘗試)")
+                
+                response = requests.post(url, headers=self.headers, json=payload, timeout=30)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if attempt > 0:
+                        logger.info(f"Gemini API 請求成功 (第 {attempt + 1} 次嘗試)")
+                    else:
+                        logger.info("Gemini API 請求成功")
+                    return result
+                elif response.status_code == 503:
+                    # 模型過載，需要重試
+                    if attempt < max_retries:
+                        wait_time = (attempt + 1) * 30  # 遞增等待時間：30秒、60秒、90秒
+                        logger.warning(f"模型過載 (503)，等待 {wait_time} 秒後重試...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error(f"API 請求失敗: 503 - 模型過載，已重試 {max_retries} 次")
+                        return None
+                elif response.status_code == 429:
+                    # 速率限制，需要更長時間等待
+                    if attempt < max_retries:
+                        wait_time = (attempt + 1) * 120  # 遞增等待時間：2分鐘、4分鐘、6分鐘
+                        logger.warning(f"速率限制 (429)，等待 {wait_time} 秒後重試...")
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        logger.error(f"API 請求失敗: 429 - 速率限制，已重試 {max_retries} 次")
+                        return None
+                else:
+                    logger.error(f"API 請求失敗: {response.status_code} - {response.text}")
+                    return None
+                    
+            except requests.exceptions.Timeout:
+                if attempt < max_retries:
+                    wait_time = (attempt + 1) * 10  # 遞增等待時間：10秒、20秒、30秒
+                    logger.warning(f"API 請求超時，等待 {wait_time} 秒後重試...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error("API 請求超時，已重試所有次數")
+                    return None
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries:
+                    wait_time = (attempt + 1) * 15  # 遞增等待時間：15秒、30秒、45秒
+                    logger.warning(f"API 請求異常: {e}，等待 {wait_time} 秒後重試...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(f"API 請求異常: {e}，已重試所有次數")
+                    return None
+            except Exception as e:
+                logger.error(f"未知錯誤: {e}")
+                return None
+        
+        return None
     
     def _extract_json_from_response(self, response: Dict[str, Any], symbol: str = None) -> Optional[Dict[str, Any]]:
         """
