@@ -51,8 +51,11 @@ jobs:
             [慢成長-蘋概股] AAPL 3008.TW 2392.TW 6197.TW \
             [高度不定性-傳統醫療及AI醫療] UNH TEM HIMS OMDA UNCY \
             [高度不定性-能源股] LEU CVX VST SMR OKLO 6869.TW 6806.TW \
-            [年初買六月賣-航海王] 2603.TW 2615.TW \
-            [金融及穩定幣等AI金融] BAC JPM V MA SOFI COIN HOOD IBKR FUTU CRCL 2881.TW 2882.TW 2891.TW 3988.HK MSTR SBET BMNR MARA \
+            [年初買六月賣-航海王] 2603.TW 2615.TW 2609.TW 2637.TW \
+            [台灣金融三雄] 2881.TW 2882.TW 2891.TW \
+            [傳統金融] BAC JPM V MA IBKR FUTU 3988.HK \
+            [科技金融] SOFI COIN HOOD PYPL UPST CRCL MARA \
+            [財技股] MSTR SBET BMNR \
             --save-daily-report \
             --GEMINI-API ${{ secrets.GEMINI_API_KEY }}
 
