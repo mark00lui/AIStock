@@ -55,7 +55,6 @@ jobs:
             [台灣金融三雄] 2881.TW 2882.TW 2891.TW \
             [傳統金融] BAC JPM V MA IBKR FUTU 3988.HK \
             [科技金融] SOFI COIN HOOD PYPL UPST CRCL MARA \
-            [財技股] MSTR SBET BMNR \
             --save-daily-report \
             --GEMINI-API ${{ secrets.GEMINI_API_KEY }}
 
