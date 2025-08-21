@@ -716,6 +716,82 @@ class StockVisualizer:
             text-align: center;
         }}
         
+        .signal-list {{
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(0,0,0,0.8);
+            border-radius: 8px;
+            font-size: 0.9em;
+            line-height: 1.5;
+            border: 2px solid rgba(255,255,255,0.3);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }}
+        
+        .signal-list strong {{
+            color: #ffd700;
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            font-size: 1.1em;
+        }}
+        
+        /* 不同類型信號的特殊顏色 */
+        .signal-list:has(strong:contains("買入")) {{
+            border-left: 4px solid #4CAF50;
+            background: linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(0,0,0,0.8) 100%);
+        }}
+        
+        .signal-list:has(strong:contains("賣出")) {{
+            border-left: 4px solid #f44336;
+            background: linear-gradient(135deg, rgba(244,67,54,0.2) 0%, rgba(0,0,0,0.8) 100%);
+        }}
+        
+        .signal-list:has(strong:contains("AI")) {{
+            border-left: 4px solid #667eea;
+            background: linear-gradient(135deg, rgba(102,126,234,0.2) 0%, rgba(0,0,0,0.8) 100%);
+        }}
+        
+        /* AI摘要卡片的信號列表特殊樣式 */
+        .summary-card[style*="gradient"] .signal-list {{
+            background: rgba(0,0,0,0.7);
+            border: 2px solid rgba(255,255,255,0.4);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }}
+        
+        .summary-card[style*="gradient"] .signal-list strong {{
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }}
+        
+        .signal-list br {{
+            margin-bottom: 2px;
+        }}
+        
+        /* 信號列表光澤效果 */
+        .signal-list::before {{
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+            pointer-events: none;
+            border-radius: 8px;
+        }}
+        
+        /* 懸停效果 */
+        .signal-list:hover {{
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            border-color: rgba(255,255,255,0.5);
+        }}
+        
         .stat-value {{
             font-size: 1.5em;
             font-weight: bold;
@@ -1558,53 +1634,102 @@ class StockVisualizer:
     
     def _generate_summary_stats(self, all_results):
         """
-        生成摘要統計
+        生成摘要統計 - 包含信號強度排序
         """
-        # 技術分析統計
+        # 技術分析統計和排序
         buy_count = 0
         sell_count = 0
         hold_count = 0
+        technical_signals = []
         
         for result in all_results:
+            symbol = result['symbol']
             signal_data = result['signal']
             if isinstance(signal_data, dict):
                 signal_str = signal_data.get('signal', '持有')
+                signal_strength = signal_data.get('strength', '中')
             else:
                 signal_str = str(signal_data)
+                signal_strength = '中'
             
+            # 統計數量
             if '買入' in signal_str:
                 buy_count += 1
             elif '賣出' in signal_str:
                 sell_count += 1
             else:
                 hold_count += 1
+            
+            # 收集信號數據用於排序
+            technical_signals.append({
+                'symbol': symbol,
+                'signal': signal_str,
+                'strength': signal_strength,
+                'current_price': result['analyzer'].data['Close'].iloc[-1] if result['analyzer'].data is not None else 0
+            })
         
-        # 左側分析統計
+        # 按信號強度排序技術分析信號
+        buy_signals = [s for s in technical_signals if '買入' in s['signal']]
+        sell_signals = [s for s in technical_signals if '賣出' in s['signal']]
+        
+        # 按強度排序（強 > 中 > 弱）
+        strength_order = {'強': 3, '中': 2, '弱': 1}
+        buy_signals.sort(key=lambda x: strength_order.get(x['strength'], 1), reverse=True)
+        sell_signals.sort(key=lambda x: strength_order.get(x['strength'], 1), reverse=True)
+        
+        # 左側分析統計和排序
         total_stocks = len(all_results)
         undervalued_count = 0
         overvalued_count = 0
+        left_signals = []
         
         for result in all_results:
+            symbol = result['symbol']
             left_data = result['left_data']
             if left_data and 'timeframes' in left_data:
                 year1_data = left_data['timeframes'].get('1_year', {})
                 if year1_data:
                     current_price = result['analyzer'].data['Close'].iloc[-1]
                     target_price = year1_data.get('target_mean', current_price)
+                    potential_return = year1_data.get('potential_return', 0)
+                    confidence = year1_data.get('confidence', 'Medium')
+                    
                     if current_price < target_price:
                         undervalued_count += 1
+                        signal_type = '買入'
                     else:
                         overvalued_count += 1
+                        signal_type = '賣出'
+                    
+                    # 收集左側分析數據用於排序
+                    left_signals.append({
+                        'symbol': symbol,
+                        'signal': signal_type,
+                        'potential_return': potential_return,
+                        'confidence': confidence,
+                        'current_price': current_price,
+                        'target_price': target_price
+                    })
         
-        # Gemini AI統計
+        # 按潛在報酬排序左側分析信號
+        left_buy_signals = [s for s in left_signals if s['signal'] == '買入']
+        left_sell_signals = [s for s in left_signals if s['signal'] == '賣出']
+        
+        # 按潛在報酬排序（買入信號按報酬從高到低，賣出信號按報酬從低到高）
+        left_buy_signals.sort(key=lambda x: x['potential_return'], reverse=True)
+        left_sell_signals.sort(key=lambda x: x['potential_return'])  # 賣出信號按報酬從低到高排序
+        
+        # Gemini AI統計和排序
         ai_buy_count = 0
         ai_sell_count = 0
         ai_hold_count = 0
         ai_bullish_count = 0
         ai_bearish_count = 0
         ai_neutral_count = 0
+        ai_signals = []
         
         for result in all_results:
+            symbol = result['symbol']
             gemini_data = result.get('gemini_data')
             if gemini_data:
                 analysis_summary = gemini_data.get('analysis_summary', {})
@@ -1612,12 +1737,18 @@ class StockVisualizer:
                 
                 # 統計AI建議
                 ai_action = investment_rec.get('action', '')
+                ai_conviction = investment_rec.get('conviction_level', '中')
+                ai_target_price = investment_rec.get('target_price', 'N/A')
+                
                 if '買入' in ai_action:
                     ai_buy_count += 1
+                    signal_type = 'AI買入'
                 elif '賣出' in ai_action:
                     ai_sell_count += 1
+                    signal_type = 'AI賣出'
                 else:
                     ai_hold_count += 1
+                    signal_type = 'AI持有'
                 
                 # 統計AI情緒
                 ai_sentiment = analysis_summary.get('overall_sentiment', '')
@@ -1627,6 +1758,41 @@ class StockVisualizer:
                     ai_bearish_count += 1
                 else:
                     ai_neutral_count += 1
+                
+                # 收集AI信號數據用於排序
+                ai_signals.append({
+                    'symbol': symbol,
+                    'signal': signal_type,
+                    'conviction': ai_conviction,
+                    'sentiment': ai_sentiment,
+                    'target_price': ai_target_price,
+                    'current_price': result['analyzer'].data['Close'].iloc[-1] if result['analyzer'].data is not None else 0
+                })
+        
+        # 按信心等級排序AI信號
+        ai_buy_signals = [s for s in ai_signals if '買入' in s['signal']]
+        ai_sell_signals = [s for s in ai_signals if '賣出' in s['signal']]
+        
+        # 按信心等級排序（高 > 中 > 低）
+        conviction_order = {'高': 3, '中': 2, '低': 1}
+        ai_buy_signals.sort(key=lambda x: conviction_order.get(x['conviction'], 1), reverse=True)
+        ai_sell_signals.sort(key=lambda x: conviction_order.get(x['conviction'], 1), reverse=True)
+        
+        # 生成技術分析排序列表
+        technical_buy_list = ""
+        technical_sell_list = ""
+        
+        if buy_signals:
+            technical_buy_list = "<div class='signal-list'><strong>🔥 強烈買入信號:</strong><br>"
+            for i, signal in enumerate(buy_signals[:5], 1):  # 顯示前5個
+                technical_buy_list += f"{i}. {signal['symbol']} ({signal['strength']})<br>"
+            technical_buy_list += "</div>"
+        
+        if sell_signals:
+            technical_sell_list = "<div class='signal-list'><strong>⚠️ 強烈賣出信號:</strong><br>"
+            for i, signal in enumerate(sell_signals[:5], 1):  # 顯示前5個
+                technical_sell_list += f"{i}. {signal['symbol']} ({signal['strength']})<br>"
+            technical_sell_list += "</div>"
         
         technical_stats = f"""
             <div class="stat-item">
@@ -1645,7 +1811,25 @@ class StockVisualizer:
                 <div class="stat-value">{total_stocks}</div>
                 <div class="stat-label">總股票數</div>
             </div>
+            {technical_buy_list}
+            {technical_sell_list}
         """
+        
+        # 生成左側分析排序列表
+        left_buy_list = ""
+        left_sell_list = ""
+        
+        if left_buy_signals:
+            left_buy_list = "<div class='signal-list'><strong>💰 高報酬買入機會:</strong><br>"
+            for i, signal in enumerate(left_buy_signals[:5], 1):  # 顯示前5個
+                left_buy_list += f"{i}. {signal['symbol']} (+{signal['potential_return']:.1f}%)<br>"
+            left_buy_list += "</div>"
+        
+        if left_sell_signals:
+            left_sell_list = "<div class='signal-list'><strong>📉 高風險賣出警告:</strong><br>"
+            for i, signal in enumerate(left_sell_signals[:5], 1):  # 顯示前5個
+                left_sell_list += f"{i}. {signal['symbol']} ({signal['potential_return']:.1f}%)<br>"
+            left_sell_list += "</div>"
         
         left_stats = f"""
             <div class="stat-item">
@@ -1664,7 +1848,25 @@ class StockVisualizer:
                 <div class="stat-value">{total_stocks}</div>
                 <div class="stat-label">分析完成</div>
             </div>
+            {left_buy_list}
+            {left_sell_list}
         """
+        
+        # 生成AI排序列表
+        ai_buy_list = ""
+        ai_sell_list = ""
+        
+        if ai_buy_signals:
+            ai_buy_list = "<div class='signal-list'><strong>🤖 AI高信心買入:</strong><br>"
+            for i, signal in enumerate(ai_buy_signals[:5], 1):  # 顯示前5個
+                ai_buy_list += f"{i}. {signal['symbol']} ({signal['conviction']})<br>"
+            ai_buy_list += "</div>"
+        
+        if ai_sell_signals:
+            ai_sell_list = "<div class='signal-list'><strong>🤖 AI高信心賣出:</strong><br>"
+            for i, signal in enumerate(ai_sell_signals[:5], 1):  # 顯示前5個
+                ai_sell_list += f"{i}. {signal['symbol']} ({signal['conviction']})<br>"
+            ai_sell_list += "</div>"
         
         # 生成AI統計HTML
         ai_stats = ""
@@ -1686,6 +1888,8 @@ class StockVisualizer:
                     <div class="stat-value">{ai_bullish_count}</div>
                     <div class="stat-label">看漲情緒</div>
                 </div>
+                {ai_buy_list}
+                {ai_sell_list}
             """
         else:
             ai_stats = """
