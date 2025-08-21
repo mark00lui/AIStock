@@ -40,19 +40,21 @@ jobs:
       - name: Run script to generate report 🚀
         run: |
           python main.py \
-            [重倉股-AI及SOC] NVDA AMD MU TSM PLTR QCOM 2454.TW 2330.TW 2308.TW 6805.TW \
-            [重倉股-AI雲] AMZN MSFT GOOGL META BABA BIDU NBIS CRWV \
-            [重倉股-網路安全] CSCO PANW FTNT CRWD \
-            [Q4上漲-代工] SMCI 2317.TW 6669.TW 3231.TW 2382.TW 3706.TW 2376.TW 2357.TW \
-            [抱5年-ASIC] AVGO MRVL 3661.TW  \
-            [抱5年-特斯拉機器人及飛行器] TSLA RKLB 3019.TW 6215.TW 4571.TW 3362.TWO 2359.TW \
-            [高危險-矽光子] 2345.TW 6223.TWO 3081.TWO 3363.TWO 3450.TW 4979.TWO 3163.TWO \
-            [長期不振-半導體代理商] 8299.TWO 8112.TW \
-            [慢成長-蘋概股] AAPL 3008.TW 2392.TW 6197.TW \
-            [高度不定性-傳統醫療及AI醫療] UNH TEM HIMS OMDA UNCY \
-            [高度不定性-能源股] LEU CVX VST SMR OKLO 6869.TW 6806.TW \
-            [年初買六月賣-航海王] 2603.TW 2615.TW 2609.TW 2637.TW \
-            [台灣金融三雄] 2881.TW 2882.TW 2891.TW \
+            [ASIC-1] NVDA AVGO AMD MRVL IBM TXN QCOM NXPI \
+            [ASIC-2] 2454.TW 2379.TW 3529.TW 5269.TW 4966.TW 3661.TW \
+            [ASIC-3] 8299.TWO 2379.TW 3034.TW 2308.TW \
+            [SEMI] ASML MU TSM 2330.TW \
+            [CSP] AMZN MSFT GOOGL META BABA BIDU NBIS CRWV \
+            [網路安全] CSCO PANW FTNT CRWD \
+            [代工] SMCI 2317.TW 6669.TW 3231.TW 2382.TW 3706.TW 2376.TW 2357.TW 6805.TW \
+            [Tesla&GG人] TSLA RKLB 3019.TW 6215.TW 4571.TW 3362.TWO 2359.TW \
+            [矽光子] 2345.TW 6223.TWO 3081.TWO 3363.TWO 3450.TW 4979.TWO 3163.TWO \
+            [代理商] 3702.TW 5434.TW 3036.TW 3048.TW 8112.TW \
+            [蘋概股] AAPL 3008.TW 2392.TW 6197.TW \
+            [醫療] UNH TEM HIMS \
+            [能源股] LEU CVX VST SMR OKLO 6869.TW 6806.TW \
+            [航海王] 2603.TW 2615.TW 2609.TW 2637.TW \
+            [台灣金融] 2881.TW 2882.TW 2891.TW \
             [傳統金融] BAC JPM V MA IBKR FUTU 3988.HK \
             [科技金融] SOFI COIN HOOD PYPL UPST CRCL MARA \
             --save-daily-report \
