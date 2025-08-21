@@ -2049,6 +2049,61 @@ class StockVisualizer:
                                 <span class="value">{signal_data.get('strength', 'N/A') if isinstance(signal_data, dict) else 'N/A'}</span>
                             </div>
                             <div class="info-item">
+                                <span class="label">年化波動率:</span>
+                                <span class="value" style="color: {self._get_volatility_color(summary.get('volatility', 'N/A'))};">
+                                    {summary.get('volatility', 'N/A')}%
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Beta值:</span>
+                                <span class="value" style="color: {self._get_beta_color(summary.get('beta', 'N/A'))};">
+                                    {summary.get('beta', 'N/A')}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">風險等級:</span>
+                                <span class="value" style="color: {self._get_risk_level_color(summary.get('risk_level', 'N/A'))};">
+                                    {summary.get('risk_level', 'N/A')}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Beta風險:</span>
+                                <span class="value" style="color: {self._get_beta_risk_color(summary.get('beta_risk', 'N/A'))};">
+                                    {summary.get('beta_risk', 'N/A')}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">夏普比率:</span>
+                                <span class="value" style="color: {self._get_sharpe_color(summary.get('sharpe_ratio', 'N/A'))};">
+                                    {summary.get('sharpe_ratio', 'N/A')}
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">年化報酬率:</span>
+                                <span class="value" style="color: {self._get_return_color(summary.get('annual_return', 'N/A'))};">
+                                    {summary.get('annual_return', 'N/A')}%
+                                </span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">市場相關性:</span>
+                                <span class="value">{summary.get('correlation', 'N/A')}</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">對應指數:</span>
+                                <span class="value">{summary.get('market_symbol', 'N/A')}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 風險提醒區塊 -->
+                        <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
+                            <h5 style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">⚠️ 風險提醒</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4; color: #856404;">
+                                {self._generate_risk_warning(summary)}
+                            </div>
+                        </div>
+                        
+                        <div class="info-grid" style="margin-top: 15px;">
+                            <div class="info-item">
                                 <span class="label">RSI:</span>
                                 <span class="value">{summary.get('rsi', 'N/A')}</span>
                             </div>
@@ -2086,6 +2141,141 @@ class StockVisualizer:
             content += stock_html
         
         return content
+    
+    def _get_volatility_color(self, volatility):
+        """獲取波動率顏色"""
+        try:
+            vol = float(volatility)
+            if vol >= 60:
+                return '#f44336'  # 紅色
+            elif vol >= 40:
+                return '#ff9800'  # 橙色
+            elif vol >= 15:
+                return '#4CAF50'  # 綠色
+            else:
+                return '#2196F3'  # 藍色
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (N/A)
+    
+    def _get_beta_color(self, beta):
+        """獲取Beta值顏色"""
+        try:
+            beta_val = float(beta)
+            if beta_val >= 1.5:
+                return '#f44336'  # 紅色
+            elif beta_val >= 1.0:
+                return '#ff9800'  # 橙色
+            elif beta_val >= 0.5:
+                return '#4CAF50'  # 綠色
+            else:
+                return '#2196F3'  # 藍色
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (N/A)
+    
+    def _get_risk_level_color(self, risk_level):
+        """獲取風險等級顏色"""
+        if isinstance(risk_level, str):
+            if '極高' in risk_level:
+                return '#f44336'  # 紅色
+            elif '高' in risk_level:
+                return '#ff9800'  # 橙色
+            elif '低' in risk_level:
+                return '#4CAF50'  # 綠色
+            elif '極低' in risk_level:
+                return '#2196F3'  # 藍色
+        return '#666666'  # 灰色 (N/A)
+    
+    def _get_beta_risk_color(self, beta_risk):
+        """獲取Beta風險顏色"""
+        if isinstance(beta_risk, str):
+            if '高Beta' in beta_risk:
+                return '#f44336'  # 紅色
+            elif '中等Beta' in beta_risk:
+                return '#ff9800'  # 橙色
+            elif '低Beta' in beta_risk:
+                return '#4CAF50'  # 綠色
+            elif '極低Beta' in beta_risk:
+                return '#2196F3'  # 藍色
+        return '#666666'  # 灰色 (N/A)
+    
+    def _get_sharpe_color(self, sharpe):
+        """獲取夏普比率顏色"""
+        try:
+            sharpe_val = float(sharpe)
+            if sharpe_val > 1.0:
+                return '#4CAF50'  # 綠色
+            elif sharpe_val > 0.5:
+                return '#ff9800'  # 橙色
+            else:
+                return '#f44336'  # 紅色
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (N/A)
+    
+    def _get_return_color(self, annual_return):
+        """獲取年化報酬率顏色"""
+        try:
+            return_val = float(annual_return)
+            if return_val > 0:
+                return '#4CAF50'  # 綠色
+            else:
+                return '#f44336'  # 紅色
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (N/A)
+    
+    def _generate_risk_warning(self, summary):
+        """
+        生成風險提醒信息
+        """
+        volatility = summary.get('volatility', 'N/A')
+        beta = summary.get('beta', 'N/A')
+        risk_level = summary.get('risk_level', '')
+        beta_risk = summary.get('beta_risk', '')
+        
+        warnings = []
+        
+        # 顯示具體數值
+        warnings.append(f"📊 <strong>具體數值</strong>: 波動率 {volatility}% | Beta值 {beta}")
+        
+        # 波動率警告
+        try:
+            vol = float(volatility)
+            if vol >= 60:
+                warnings.append("🔴 <strong>極高波動率</strong>: 股價波動劇烈，適合短線操作或風險承受能力強的投資者")
+            elif vol >= 40:
+                warnings.append("🟡 <strong>高波動率</strong>: 股價波動較大，建議分批建倉並設置止損")
+            elif vol >= 25:
+                warnings.append("🟢 <strong>中等波動率</strong>: 股價波動適中，適合一般投資者")
+            else:
+                warnings.append("🔵 <strong>低波動率</strong>: 股價相對穩定，適合保守型投資者")
+        except (ValueError, TypeError):
+            warnings.append("⚠️ <strong>波動率數據不足</strong>: 無法計算波動率，請檢查數據")
+        
+        # Beta警告
+        try:
+            beta_val = float(beta)
+            if beta_val >= 1.5:
+                warnings.append("🔴 <strong>高Beta股票</strong>: 市場敏感度高，牛市表現優於大盤，熊市跌幅更大")
+            elif beta_val >= 1.0:
+                warnings.append("🟡 <strong>中等Beta股票</strong>: 波動性略高於市場，需注意市場環境")
+            elif beta_val >= 0.5:
+                warnings.append("🟢 <strong>低Beta股票</strong>: 相對穩定，適合防禦性投資")
+            else:
+                warnings.append("🔵 <strong>極低Beta股票</strong>: 防禦性強，市場下跌時相對抗跌")
+        except (ValueError, TypeError):
+            warnings.append("⚠️ <strong>Beta數據不足</strong>: 無法計算Beta值，請檢查數據")
+        
+        # 綜合建議
+        try:
+            vol = float(volatility)
+            beta_val = float(beta)
+            if vol >= 50 and beta_val >= 1.2:
+                warnings.append("⚠️ <strong>高風險組合</strong>: 高波動率+高Beta，建議謹慎操作，嚴格控制倉位")
+            elif vol <= 20 and beta_val <= 0.8:
+                warnings.append("✅ <strong>低風險組合</strong>: 低波動率+低Beta，適合保守型投資者")
+        except (ValueError, TypeError):
+            pass  # 如果無法轉換為數字，跳過綜合建議
+        
+        return "<br>".join(warnings)
     
     def _generate_gemini_ai_panel(self, symbol, gemini_data):
         """

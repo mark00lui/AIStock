@@ -180,6 +180,216 @@ class StockAnalyzer:
             traceback.print_exc()
             return
     
+    def calculate_volatility_and_beta(self):
+        """計算波動率和Beta值"""
+        if self.data is None or len(self.data) == 0:
+            print("請先獲取股票資料")
+            return None
+        
+        try:
+            # 計算股票日收益率
+            stock_returns = self.data['Close'].pct_change().dropna()
+            
+            # 根據股票代碼確定對應的市場指數
+            market_symbol = self._get_market_index()
+            if market_symbol is None:
+                print(f"無法確定 {self.symbol} 對應的市場指數")
+                return None
+            
+            # 獲取市場指數數據 - 使用與股票相同的時間區間
+            print(f"正在獲取市場指數 {market_symbol} 的數據...")
+            
+            # 計算時間範圍 - 使用字符串格式避免時區問題，並忽略最後一天
+            start_date = self.data.index[0].strftime('%Y-%m-%d')
+            # 忽略最後一天，避免大盤指數結算時間差異
+            end_date = self.data.index[-2].strftime('%Y-%m-%d') if len(self.data) > 1 else self.data.index[-1].strftime('%Y-%m-%d')
+            
+            # 使用具體的日期範圍而不是 period
+            market_data = yf.download(market_symbol, start=start_date, end=end_date, progress=False)
+            if market_data is None or len(market_data) == 0:
+                print(f"無法獲取市場指數 {market_symbol} 的數據")
+                return None
+            
+            print(f"股票數據期間: {start_date} 到 {end_date}")
+            print(f"市場指數數據期間: {market_data.index[0].strftime('%Y-%m-%d')} 到 {market_data.index[-1].strftime('%Y-%m-%d')}")
+            
+            # 計算市場日收益率
+            market_returns = market_data['Close'].pct_change().dropna()
+            
+            # 對齊數據 - 以大盤指數為準
+            print(f"對齊前 - 股票交易日數: {len(stock_returns)}, 市場指數交易日數: {len(market_returns)}")
+            
+            # 以大盤指數的日期為準，對齊股票數據
+            market_dates = market_returns.index.strftime('%Y-%m-%d')
+            stock_dates = stock_returns.index.strftime('%Y-%m-%d')
+            
+            # 找到股票數據中與大盤指數日期匹配的數據
+            matching_stock_dates = set(stock_dates) & set(market_dates)
+            print(f"大盤指數日期數: {len(market_dates)}")
+            print(f"股票與大盤匹配的日期數: {len(matching_stock_dates)}")
+            
+            if len(matching_stock_dates) < 30:
+                print(f"匹配的日期不足，只有 {len(matching_stock_dates)} 個交易日")
+                return None
+            
+            # 以大盤指數的日期為準，重新索引股票數據
+            stock_returns_aligned = stock_returns[stock_returns.index.strftime('%Y-%m-%d').isin(market_dates)]
+            market_returns_aligned = market_returns  # 大盤數據保持不變
+            
+            # 確保數據按日期排序
+            stock_returns_aligned = stock_returns_aligned.sort_index()
+            market_returns_aligned = market_returns_aligned.sort_index()
+            
+            # 最終對齊檢查 - 使用更保險的方法
+            # 將兩個Series的索引轉換為字符串格式進行比較
+            stock_dates_str = stock_returns_aligned.index.strftime('%Y-%m-%d')
+            market_dates_str = market_returns_aligned.index.strftime('%Y-%m-%d')
+            
+            # 找到共同的日期字符串
+            common_date_strings = set(stock_dates_str) & set(market_dates_str)
+            if len(common_date_strings) < 30:
+                print(f"共同日期不足，只有 {len(common_date_strings)} 個交易日")
+                return None
+            
+            # 使用共同日期字符串重新索引
+            stock_returns_final = stock_returns_aligned[stock_returns_aligned.index.strftime('%Y-%m-%d').isin(common_date_strings)]
+            market_returns_final = market_returns_aligned[market_returns_aligned.index.strftime('%Y-%m-%d').isin(common_date_strings)]
+            
+            # 確保數據按日期排序
+            stock_returns_final = stock_returns_final.sort_index()
+            market_returns_final = market_returns_final.sort_index()
+            
+            # 最終長度檢查
+            final_length = min(len(stock_returns_final), len(market_returns_final))
+            if final_length < 30:
+                print(f"最終對齊後數據不足，只有 {final_length} 個交易日")
+                return None
+            
+            # 截取到相同長度
+            stock_returns_final = stock_returns_final.head(final_length)
+            market_returns_final = market_returns_final.head(final_length)
+            
+            print(f"最終對齊 - 股票數據: {len(stock_returns_final)}, 市場數據: {len(market_returns_final)}")
+            
+            # 使用對齊後的數據
+            stock_returns = stock_returns_final
+            market_returns = market_returns_final
+            
+            # 計算年化波動率
+            volatility = float(stock_returns.std() * np.sqrt(252) * 100)
+            
+            # 計算Beta值 - 使用更保險的方法
+            try:
+                # 轉換為NumPy數組並確保是1D數組
+                stock_array = stock_returns.values.flatten()
+                market_array = market_returns.values.flatten()
+                
+                # 確保數組長度一致
+                if len(stock_array) != len(market_array):
+                    print(f"數組長度不匹配: 股票 {len(stock_array)}, 市場 {len(market_array)}")
+                    return None
+                
+                # 檢查數組維度
+                if stock_array.ndim != 1 or market_array.ndim != 1:
+                    print(f"數組維度錯誤: 股票 {stock_array.ndim}D, 市場 {market_array.ndim}D")
+                    return None
+                
+                # 使用NumPy直接計算協方差和方差，避免時區問題
+                covariance = np.cov(stock_array, market_array)[0, 1]
+                market_variance = np.var(market_array)
+                
+                if market_variance == 0:
+                    print("市場方差為零，無法計算Beta")
+                    return None
+                    
+                beta = float(covariance / market_variance)
+            except Exception as beta_error:
+                print(f"Beta計算錯誤: {beta_error}")
+                return None
+            
+            # 計算相關係數 - 使用NumPy
+            try:
+                correlation = float(np.corrcoef(stock_array, market_array)[0, 1])
+            except Exception as corr_error:
+                print(f"相關係數計算錯誤: {corr_error}")
+                correlation = 0.0
+            
+            # 計算年化報酬率
+            annual_return = float(stock_returns.mean() * 252 * 100)
+            market_annual_return = float(market_returns.mean() * 252 * 100)
+            
+            # 計算夏普比率 (假設無風險利率5%)
+            risk_free_rate = 0.05
+            sharpe_ratio = float((stock_returns.mean() * 252 - risk_free_rate) / (stock_returns.std() * np.sqrt(252)))
+            
+            # 風險評估
+            risk_level = self._assess_risk_level(volatility, beta)
+            beta_risk = self._assess_beta_risk(beta)
+            
+            return {
+                'volatility': volatility,
+                'beta': beta,
+                'correlation': correlation,
+                'annual_return': annual_return,
+                'market_annual_return': market_annual_return,
+                'sharpe_ratio': sharpe_ratio,
+                'risk_level': risk_level,
+                'beta_risk': beta_risk,
+                'market_symbol': market_symbol,
+                'data_points': len(matching_stock_dates)
+            }
+            
+        except Exception as e:
+            print(f"計算波動率和Beta時發生錯誤: {e}")
+            return None
+    
+    def _get_market_index(self):
+        """根據股票代碼確定對應的市場指數"""
+        if self.symbol.endswith('.TW') or self.symbol.endswith('.TWO'):
+            # 台灣加權指數 - 嘗試不同的代碼
+            return '^TWII'  # 台灣加權指數 (不使用^符號)
+        elif self.symbol.endswith('.HK'):
+            return '^HSI'   # 恒生指數
+        elif self.symbol.endswith('.T'):
+            return '^N225'  # 日經225指數
+        elif self.symbol.endswith('.L'):
+            return '^FTSE'  # 英國富時100指數
+        elif self.symbol.endswith('.TO'):
+            return '^GSPTSE'  # 加拿大S&P/TSX指數
+        elif self.symbol.endswith('.AX'):
+            return '^AXJO'  # 澳洲S&P/ASX 200指數
+        elif self.symbol.endswith('.DE'):
+            return '^GDAXI'  # 德國DAX指數
+        elif self.symbol.endswith('.PA'):
+            return '^FCHI'  # 法國CAC 40指數
+        else:
+            # 所有其他股票（包括美股如 TSM, AAPL, NVDA 等）都使用 SPY
+            return 'SPY'    # 美股SPY
+    
+    def _assess_risk_level(self, volatility, beta):
+        """評估風險等級"""
+        if volatility >= 60:
+            return '極高風險'
+        elif volatility >= 40:
+            return '高風險'
+        elif volatility >= 25:
+            return '中等風險'
+        elif volatility >= 15:
+            return '低風險'
+        else:
+            return '極低風險'
+    
+    def _assess_beta_risk(self, beta):
+        """評估Beta風險"""
+        if beta >= 1.5:
+            return '高Beta (市場敏感度高)'
+        elif beta >= 1.0:
+            return '中等Beta (略高於市場)'
+        elif beta >= 0.5:
+            return '低Beta (相對穩定)'
+        else:
+            return '極低Beta (防禦性)'
+    
     def generate_signals(self):
         """生成買賣訊號"""
         if self.data is None:
@@ -345,6 +555,9 @@ class StockAnalyzer:
         else:
             volume_trend = 'N/A'
         
+        # 計算波動率和Beta
+        volatility_beta = self.calculate_volatility_and_beta()
+        
         return {
             'total_days': len(recent_signals),
             'buy_signals': len(buy_signals),
@@ -360,7 +573,16 @@ class StockAnalyzer:
             'bb_status': bb_status,
             'ma_status': ma_status,
             'volume': f"{volume:,.0f}" if volume is not None else 'N/A',
-            'volume_trend': volume_trend
+            'volume_trend': volume_trend,
+            # 波動率和Beta信息
+            'volatility': round(volatility_beta['volatility'], 2) if volatility_beta else 'N/A',
+            'beta': round(volatility_beta['beta'], 3) if volatility_beta else 'N/A',
+            'risk_level': volatility_beta['risk_level'] if volatility_beta else 'N/A',
+            'beta_risk': volatility_beta['beta_risk'] if volatility_beta else 'N/A',
+            'sharpe_ratio': round(volatility_beta['sharpe_ratio'], 3) if volatility_beta else 'N/A',
+            'correlation': round(volatility_beta['correlation'], 3) if volatility_beta else 'N/A',
+            'annual_return': round(volatility_beta['annual_return'], 2) if volatility_beta else 'N/A',
+            'market_symbol': volatility_beta['market_symbol'] if volatility_beta else 'N/A'
         }
     
     def run_analysis(self):
@@ -373,6 +595,9 @@ class StockAnalyzer:
         self.calculate_technical_indicators()
         self.generate_signals()
         
+        # 計算波動率和Beta
+        volatility_beta = self.calculate_volatility_and_beta()
+        
         current_signal = self.get_current_signal()
         summary = self.get_signal_summary()
         
@@ -382,6 +607,14 @@ class StockAnalyzer:
         print(f"當前價格: ${current_signal['price']}")
         print(f"建議動作: {current_signal['signal']}")
         print(f"訊號強度: {current_signal['strength']}")
+        
+        if volatility_beta:
+            print(f"\n=== 風險分析 ===")
+            print(f"年化波動率: {volatility_beta['volatility']:.2f}%")
+            print(f"Beta值: {volatility_beta['beta']:.3f}")
+            print(f"風險等級: {volatility_beta['risk_level']}")
+            print(f"Beta風險: {volatility_beta['beta_risk']}")
+            print(f"夏普比率: {volatility_beta['sharpe_ratio']:.3f}")
         
         return True
     
