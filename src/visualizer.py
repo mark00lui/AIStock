@@ -315,6 +315,49 @@ class StockVisualizer:
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }}
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {{
+            .container {{
+                margin: 0;
+                box-shadow: none;
+            }}
+            
+            .stock-nav {{
+                width: 85vw;
+                max-width: 320px;
+            }}
+            
+            .header {{
+                padding: 20px 15px;
+            }}
+            
+            .summary-section {{
+                padding: 15px;
+            }}
+            
+            .summary-grid {{
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }}
+            
+            .stocks-section {{
+                padding: 15px;
+            }}
+            
+            .stock-card {{
+                margin-bottom: 20px;
+            }}
+            
+            .analysis-grid {{
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }}
+            
+            .chart-container {{
+                padding: 15px;
+            }}
+        }}
     </style>
 </head>
 <body>
@@ -477,11 +520,25 @@ class StockVisualizer:
             margin: 0 auto;
             background: white;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+        }}
+        
+        .container.with-nav {{
+            margin-left: 280px;
+        }}
+        
+        /* 手機版容器不受導航影響 */
+        @media (max-width: 768px) {{
+            .container {{
+                margin-left: 0 !important;
+                transition: none;
+            }}
         }}
         
         /* 響應式導航 */
         .nav-toggle {{
-            display: none;
+            display: block;
             background: #667eea;
             color: white;
             border: none;
@@ -491,49 +548,109 @@ class StockVisualizer:
             position: fixed;
             top: 10px;
             left: 10px;
-            z-index: 1000;
+            z-index: 1001;
             border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }}
+        
+        .nav-toggle:hover {{
+            background: #5a6fd8;
+            transform: scale(1.05);
         }}
         
         .stock-nav {{
-            background: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 20px;
-            position: sticky;
+            padding: 15px;
+            position: fixed;
+            left: 0;
             top: 0;
-            z-index: 999;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 280px;
+            height: 100vh;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+            overflow-y: auto;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }}
+        
+        .stock-nav.active {{
+            transform: translateX(0);
+        }}
+        
+        /* 手機版浮出式導航 */
+        @media (max-width: 768px) {{
+            .stock-nav {{
+                width: 85vw;
+                max-width: 320px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.3);
+                border-radius: 0 10px 10px 0;
+            }}
+            
+            /* 手機版導航背景遮罩 */
+            .nav-overlay {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease;
+            }}
+            
+            .nav-overlay.active {{
+                opacity: 1;
+                visibility: visible;
+            }}
         }}
         
         .stock-nav h3 {{
             margin: 0 0 15px 0;
-            font-size: 1.3em;
+            font-size: 1.2em;
             text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
         }}
         
         .stock-list {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 8px;
-            max-height: 300px;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }}
         
         .stock-link {{
-            display: block;
-            padding: 8px 12px;
-            background: #34495e;
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            background: rgba(255,255,255,0.1);
             color: white;
             text-decoration: none;
-            border-radius: 5px;
-            text-align: center;
-            font-size: 0.9em;
-            transition: all 0.3s ease;
+            border-radius: 4px;
+            font-size: 0.85em;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
         }}
         
         .stock-link:hover {{
-            background: #667eea;
-            transform: translateY(-2px);
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }}
+        
+        .stock-link .symbol {{
+            font-weight: bold;
+            margin-right: 8px;
+        }}
+        
+        .stock-link .name {{
+            opacity: 0.8;
+            font-size: 0.8em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }}
         
         .header {{
@@ -859,13 +976,17 @@ class StockVisualizer:
 <body>
     <button class="nav-toggle" onclick="toggleNav()">📋</button>
     
-    <div class="container">
-        <div class="stock-nav" id="stockNav">
-            <h3>📊 股票導航</h3>
-            <div class="stock-list">
-                {stock_navigation}
-            </div>
+    <!-- 手機版導航背景遮罩 -->
+    <div class="nav-overlay" id="navOverlay" onclick="toggleNav()"></div>
+    
+    <div class="stock-nav" id="stockNav">
+        <h3>📊 股票導航</h3>
+        <div class="stock-list">
+            {stock_navigation}
         </div>
+    </div>
+    
+    <div class="container">
         
         <div class="header">
             <h1>📊 股票分析報告</h1>
@@ -908,7 +1029,20 @@ class StockVisualizer:
         // 導航切換功能
         function toggleNav() {{
             const nav = document.getElementById('stockNav');
-            nav.style.display = nav.style.display === 'none' ? 'block' : 'none';
+            const container = document.querySelector('.container');
+            const overlay = document.getElementById('navOverlay');
+            
+            nav.classList.toggle('active');
+            
+            // 手機版顯示背景遮罩
+            if (window.innerWidth <= 768 && overlay) {{
+                overlay.classList.toggle('active');
+            }}
+            
+            // 只在桌面版調整容器邊距
+            if (window.innerWidth > 768) {{
+                container.classList.toggle('with-nav');
+            }}
         }}
         
         // 平滑滾動到指定股票
@@ -919,6 +1053,18 @@ class StockVisualizer:
                     behavior: 'smooth',
                     block: 'start'
                 }});
+                
+                // 手機版點擊後自動收起導航
+                if (window.innerWidth <= 768) {{
+                    setTimeout(() => {{
+                        const nav = document.getElementById('stockNav');
+                        const overlay = document.getElementById('navOverlay');
+                        nav.classList.remove('active');
+                        if (overlay) {{
+                            overlay.classList.remove('active');
+                        }}
+                    }}, 300); // 等待滾動動畫開始後收起
+                }}
             }}
         }}
         
@@ -934,13 +1080,23 @@ class StockVisualizer:
         function handleResize() {{
             const nav = document.getElementById('stockNav');
             const toggle = document.querySelector('.nav-toggle');
+            const container = document.querySelector('.container');
+            const overlay = document.getElementById('navOverlay');
             
             if (window.innerWidth <= 768) {{
-                nav.style.display = 'none';
+                nav.classList.remove('active');
+                container.classList.remove('with-nav');
+                if (overlay) {{
+                    overlay.classList.remove('active');
+                }}
                 toggle.style.display = 'block';
             }} else {{
-                nav.style.display = 'block';
-                toggle.style.display = 'none';
+                nav.classList.add('active');
+                container.classList.add('with-nav');
+                if (overlay) {{
+                    overlay.classList.remove('active');
+                }}
+                toggle.style.display = 'block';
             }}
         }}
         
@@ -1005,8 +1161,9 @@ class StockVisualizer:
                         
                         navigation_html += f"""
                         <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
-                           style="border-left: 4px solid {signal_color};">
-                            {display_name}
+                           style="border-left: 3px solid {signal_color};">
+                            <span class="symbol">{symbol}</span>
+                            <span class="name">{stock_name[:12]}{'...' if len(stock_name) > 12 else ''}</span>
                         </a>
                         """
         else:
@@ -1026,8 +1183,9 @@ class StockVisualizer:
                 
                 navigation_html += f"""
                 <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
-                   style="border-left: 4px solid {signal_color};">
-                    {display_name}
+                   style="border-left: 3px solid {signal_color};">
+                    <span class="symbol">{symbol}</span>
+                    <span class="name">{stock_name[:12]}{'...' if len(stock_name) > 12 else ''}</span>
                 </a>
                 """
         
