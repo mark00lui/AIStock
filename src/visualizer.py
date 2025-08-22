@@ -522,7 +522,7 @@ class StockVisualizer:
                 for result in results:
                     if result['symbol'] in symbols:
                         symbol = result['symbol']
-                        stock_name = getattr(result['analyzer'], 'stock_name', symbol)
+                        stock_name = getattr(result['analyzer'], 'long_name', symbol)
                         display_name = stock_name[:12] + ('...' if len(stock_name) > 12 else '')
                         
                         signal_color = '#4CAF50' if 'Buy' in str(result.get('signal', '')) else '#f44336' if 'Sell' in str(result.get('signal', '')) else '#ff9800'
@@ -538,7 +538,7 @@ class StockVisualizer:
             # 無分類顯示
             for result in results:
                 symbol = result['symbol']
-                stock_name = getattr(result['analyzer'], 'stock_name', symbol)
+                stock_name = getattr(result['analyzer'], 'long_name', symbol)
                 display_name = stock_name[:12] + ('...' if len(stock_name) > 12 else '')
                 
                 signal_color = '#4CAF50' if 'Buy' in str(result.get('signal', '')) else '#f44336' if 'Sell' in str(result.get('signal', '')) else '#ff9800'
@@ -586,7 +586,7 @@ class StockVisualizer:
         gemini_data = result.get('gemini_data', {})
         
         # 獲取股票顯示名稱
-        stock_name = getattr(analyzer, 'stock_name', symbol)
+        stock_name = getattr(analyzer, 'long_name', symbol)
         stock_display_name = f"{stock_name} ({symbol})"
         
         # 獲取信號信息
@@ -767,7 +767,7 @@ class StockVisualizer:
         """生成單一股票HTML報告"""
         symbol = result['symbol']
         analyzer = result['analyzer']
-        stock_name = getattr(analyzer, 'stock_name', symbol)
+        stock_name = getattr(analyzer, 'long_name', symbol)
         stock_display_name = f"{stock_name} ({symbol})"
         
         # 組合所有CSS
