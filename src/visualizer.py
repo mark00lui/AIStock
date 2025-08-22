@@ -533,7 +533,17 @@ class StockVisualizer:
                         stock_name = getattr(result['analyzer'], 'long_name', symbol)
                         display_name = stock_name[:12] + ('...' if len(stock_name) > 12 else '')
                         
-                        signal_color = '#4CAF50' if 'Buy' in str(result.get('signal', '')) else '#f44336' if 'Sell' in str(result.get('signal', '')) else '#ff9800'
+                        # 使用修正後的信號判斷邏輯
+                        signal_str = str(result.get('signal', '')).upper()
+                        if isinstance(result.get('signal'), dict):
+                            signal_str = str(result.get('signal', {}).get('signal', '')).upper()
+                        
+                        if 'SELL' in signal_str:
+                            signal_color = '#f44336'
+                        elif 'BUY' in signal_str:
+                            signal_color = '#4CAF50'
+                        else:
+                            signal_color = '#ff9800'
                         
                         nav_items.append(f'''
                         <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
@@ -549,7 +559,17 @@ class StockVisualizer:
                 stock_name = getattr(result['analyzer'], 'long_name', symbol)
                 display_name = stock_name[:12] + ('...' if len(stock_name) > 12 else '')
                 
-                signal_color = '#4CAF50' if 'Buy' in str(result.get('signal', '')) else '#f44336' if 'Sell' in str(result.get('signal', '')) else '#ff9800'
+                # 使用修正後的信號判斷邏輯
+                signal_str = str(result.get('signal', '')).upper()
+                if isinstance(result.get('signal'), dict):
+                    signal_str = str(result.get('signal', {}).get('signal', '')).upper()
+                
+                if 'SELL' in signal_str:
+                    signal_color = '#f44336'
+                elif 'BUY' in signal_str:
+                    signal_color = '#4CAF50'
+                else:
+                    signal_color = '#ff9800'
                 
                 nav_items.append(f'''
                 <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
@@ -940,10 +960,23 @@ class StockVisualizer:
         if not results:
             return ""
         
-        # 統計信號
-        buy_signals = [r for r in results if 'Buy' in str(r.get('signal', ''))]
-        sell_signals = [r for r in results if 'Sell' in str(r.get('signal', ''))]
-        hold_signals = [r for r in results if 'Hold' in str(r.get('signal', ''))]
+        # 統計信號 - 修正邏輯，每個股票只能歸類為一種信號
+        buy_signals = []
+        sell_signals = []
+        hold_signals = []
+        
+        for r in results:
+            signal_str = str(r.get('signal', '')).upper()
+            if isinstance(r.get('signal'), dict):
+                signal_str = str(r.get('signal', {}).get('signal', '')).upper()
+            
+            # 優先級：SELL > BUY > HOLD
+            if 'SELL' in signal_str:
+                sell_signals.append(r)
+            elif 'BUY' in signal_str:
+                buy_signals.append(r)
+            else:
+                hold_signals.append(r)
         
         # 統計右側分析指標
         right_analysis_stats = self._calculate_right_analysis_stats(results)
