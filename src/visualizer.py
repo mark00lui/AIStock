@@ -1017,6 +1017,93 @@ class StockVisualizer:
          </div>
          '''
         
+        # 統計左側分析區間
+        buy_zone_stocks = []
+        hold_zone_stocks = []
+        sell_zone_stocks = []
+        
+        for result in results:
+            try:
+                # 獲取當前價格和目標價格
+                analyzer = result['analyzer']
+                current_price = analyzer.data['Close'].iloc[-1] if hasattr(analyzer, 'data') and not analyzer.data.empty else 0
+                
+                left_data = result.get('left_data', {})
+                timeframes = left_data.get('timeframes', {})
+                year1_data = timeframes.get('1_year', {})
+                
+                # 獲取價格區間
+                buy_zone = year1_data.get('buy_zone', '')
+                hold_zone = year1_data.get('hold_zone', '')
+                sell_zone = year1_data.get('sell_zone', '')
+                
+                # 判斷當前價格在哪個區間
+                if buy_zone and buy_zone != 'N/A':
+                    try:
+                        # 解析買入區間 (例如: "$150-180")
+                        buy_range = buy_zone.replace('$', '').split('-')
+                        if len(buy_range) == 2:
+                            buy_low = float(buy_range[0])
+                            buy_high = float(buy_range[1])
+                            if buy_low <= current_price <= buy_high:
+                                buy_zone_stocks.append(result)
+                    except:
+                        pass
+                
+                if sell_zone and sell_zone != 'N/A':
+                    try:
+                        # 解析賣出區間 (例如: "$200-250")
+                        sell_range = sell_zone.replace('$', '').split('-')
+                        if len(sell_range) == 2:
+                            sell_low = float(sell_range[0])
+                            sell_high = float(sell_range[1])
+                            if sell_low <= current_price <= sell_high:
+                                sell_zone_stocks.append(result)
+                    except:
+                        pass
+                
+                # 如果不在買入或賣出區間，則在持有區間
+                if result not in buy_zone_stocks and result not in sell_zone_stocks:
+                    hold_zone_stocks.append(result)
+                    
+            except Exception as e:
+                print(f"分析 {result['symbol']} 價格區間時發生錯誤: {e}")
+                continue
+        
+        # 創建買入區間股票列表
+        buy_zone_list = ""
+        if buy_zone_stocks:
+            buy_zone_items = []
+            for stock in buy_zone_stocks:
+                symbol = stock['symbol']
+                stock_name = getattr(stock['analyzer'], 'long_name', symbol)
+                buy_zone_items.append(f'<li><a href="#stock-{symbol}" style="color: #4CAF50; text-decoration: none;">{symbol} ({stock_name[:15]}{"..." if len(stock_name) > 15 else ""})</a></li>')
+            buy_zone_list = f'''
+            <div style="margin-top: 15px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px; border-left: 4px solid #4CAF50;">
+                <h5 style="margin: 0 0 10px 0; color: #4CAF50; font-size: 0.9em;">🟢 買入區間股票列表</h5>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.85em;">
+                    {''.join(buy_zone_items)}
+                </ul>
+            </div>
+            '''
+        
+        # 創建賣出區間股票列表
+        sell_zone_list = ""
+        if sell_zone_stocks:
+            sell_zone_items = []
+            for stock in sell_zone_stocks:
+                symbol = stock['symbol']
+                stock_name = getattr(stock['analyzer'], 'long_name', symbol)
+                sell_zone_items.append(f'<li><a href="#stock-{symbol}" style="color: #f44336; text-decoration: none;">{symbol} ({stock_name[:15]}{"..." if len(stock_name) > 15 else ""})</a></li>')
+            sell_zone_list = f'''
+            <div style="margin-top: 15px; padding: 10px; background: rgba(244, 67, 54, 0.1); border-radius: 5px; border-left: 4px solid #f44336;">
+                <h5 style="margin: 0 0 10px 0; color: #f44336; font-size: 0.9em;">🔴 賣出區間股票列表</h5>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.85em;">
+                    {''.join(sell_zone_items)}
+                </ul>
+            </div>
+            '''
+        
         # 創建左側分析摘要
         left_summary = f'''
         <div class="summary-card">
@@ -1027,6 +1114,18 @@ class StockVisualizer:
                     <div>分析股票</div>
                 </div>
                 <div class="stat-item">
+                    <div style="font-size: 2em; color: #4CAF50; font-weight: bold;">{len(buy_zone_stocks)}</div>
+                    <div>買入區間</div>
+                </div>
+                <div class="stat-item">
+                    <div style="font-size: 2em; color: #ff9800; font-weight: bold;">{len(hold_zone_stocks)}</div>
+                    <div>持有區間</div>
+                </div>
+                <div class="stat-item">
+                    <div style="font-size: 2em; color: #f44336; font-weight: bold;">{len(sell_zone_stocks)}</div>
+                    <div>賣出區間</div>
+                </div>
+                <div class="stat-item">
                     <div style="font-size: 2em; color: #4CAF50; font-weight: bold;">{len([r for r in results if r.get('left_data', {}).get('timeframes', {}).get('1_year', {}).get('potential_return', 0) is not None and r.get('left_data', {}).get('timeframes', {}).get('1_year', {}).get('potential_return', 0) > 0])}</div>
                     <div>正報酬</div>
                 </div>
@@ -1035,6 +1134,8 @@ class StockVisualizer:
                     <div>負報酬</div>
                 </div>
             </div>
+            {buy_zone_list}
+            {sell_zone_list}
         </div>
         '''
         
