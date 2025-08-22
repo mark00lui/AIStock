@@ -948,6 +948,40 @@ class StockVisualizer:
         # 統計右側分析指標
         right_analysis_stats = self._calculate_right_analysis_stats(results)
         
+        # 創建買入信號列表
+        buy_signals_list = ""
+        if buy_signals:
+            buy_items = []
+            for signal in buy_signals:
+                symbol = signal['symbol']
+                stock_name = getattr(signal['analyzer'], 'long_name', symbol)
+                buy_items.append(f'<li><a href="#stock-{symbol}" style="color: #4CAF50; text-decoration: none;">{symbol} ({stock_name[:15]}{"..." if len(stock_name) > 15 else ""})</a></li>')
+            buy_signals_list = f'''
+            <div style="margin-top: 15px; padding: 10px; background: rgba(76, 175, 80, 0.1); border-radius: 5px; border-left: 4px solid #4CAF50;">
+                <h5 style="margin: 0 0 10px 0; color: #4CAF50; font-size: 0.9em;">🟢 買入信號股票列表</h5>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.85em;">
+                    {''.join(buy_items)}
+                </ul>
+            </div>
+            '''
+        
+        # 創建賣出信號列表
+        sell_signals_list = ""
+        if sell_signals:
+            sell_items = []
+            for signal in sell_signals:
+                symbol = signal['symbol']
+                stock_name = getattr(signal['analyzer'], 'long_name', symbol)
+                sell_items.append(f'<li><a href="#stock-{symbol}" style="color: #f44336; text-decoration: none;">{symbol} ({stock_name[:15]}{"..." if len(stock_name) > 15 else ""})</a></li>')
+            sell_signals_list = f'''
+            <div style="margin-top: 15px; padding: 10px; background: rgba(244, 67, 54, 0.1); border-radius: 5px; border-left: 4px solid #f44336;">
+                <h5 style="margin: 0 0 10px 0; color: #f44336; font-size: 0.9em;">🔴 賣出信號股票列表</h5>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.85em;">
+                    {''.join(sell_items)}
+                </ul>
+            </div>
+            '''
+        
         # 創建右側分析摘要
         tech_summary = f'''
          <div class="summary-card">
@@ -978,6 +1012,8 @@ class StockVisualizer:
                      <div>賣壓風險</div>
                  </div>
              </div>
+             {buy_signals_list}
+             {sell_signals_list}
          </div>
          '''
         
