@@ -171,6 +171,23 @@ class StockVisualizer:
             margin: 0 auto;
             background: white;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: margin-left 0.3s ease;
+        }}
+        
+        .container.with-nav {{
+            margin-left: 280px;
+            margin-right: 0;
+            max-width: calc(100vw - 280px);
+        }}
+        
+        /* 手機版容器不受導航影響 */
+        @media (max-width: 768px) {{
+            .container {{
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                max-width: 100vw !important;
+                transition: none;
+            }}
         }}
         
         .header {{
@@ -281,6 +298,128 @@ class StockVisualizer:
             font-size: 1.2em;
         }}
         
+        /* 響應式導航 */
+        .nav-toggle {{
+            display: block;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }}
+        
+        .nav-toggle:hover {{
+            background: #5a6fd8;
+            transform: scale(1.05);
+        }}
+        
+        .stock-nav {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+            overflow-y: auto;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }}
+        
+        .stock-nav.active {{
+            transform: translateX(0);
+        }}
+        
+        /* 手機版浮出式導航 */
+        @media (max-width: 768px) {{
+            .stock-nav {{
+                width: 85vw;
+                max-width: 320px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.3);
+                border-radius: 0 10px 10px 0;
+            }}
+            
+            /* 手機版導航背景遮罩 */
+            .nav-overlay {{
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s ease;
+            }}
+            
+            .nav-overlay.active {{
+                opacity: 1;
+                visibility: visible;
+            }}
+        }}
+        
+        .stock-link {{
+            display: flex;
+            flex-direction: column;
+            padding: 8px 12px;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.1);
+        }}
+        
+        .stock-link:hover {{
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }}
+        
+        .stock-link .symbol {{
+            font-weight: bold;
+            font-size: 1.1em;
+        }}
+        
+        .stock-link .name {{
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 2px;
+        }}
+        
+        /* 回到頂部按鈕 */
+        .back-to-top {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }}
+        
+        .back-to-top:hover {{
+            background: #5a6fd8;
+            transform: scale(1.1);
+        }}
+        
         /* 響應式設計 */
         @media (min-width: 768px) {{
             .header {{
@@ -321,6 +460,7 @@ class StockVisualizer:
             .container {{
                 margin: 0;
                 box-shadow: none;
+                max-width: 100vw;
             }}
             
             .stock-nav {{
@@ -361,12 +501,35 @@ class StockVisualizer:
     </style>
 </head>
 <body>
+    <!-- 導航切換按鈕 -->
+    <button class="nav-toggle" onclick="toggleNav()" title="切換導航">☰</button>
+    
+    <!-- 股票導航 -->
+    <div id="stockNav" class="stock-nav">
+        <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2);">
+            <h3 style="margin: 0; font-size: 1.2em;">📋 股票導航</h3>
+            <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.8;">點擊快速跳轉</p>
+        </div>
+        <div style="display: grid; gap: 5px;">
+            <a href="#stock-{symbol}" class="stock-link" onclick="scrollToStock('{symbol}')" 
+               style="border-left: 3px solid #4CAF50;">
+                <span class="symbol">{symbol}</span>
+                <span class="name">{stock_name[:12]}{'...' if len(stock_name) > 12 else ''}</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- 手機版導航背景遮罩 -->
+    <div id="navOverlay" class="nav-overlay"></div>
+    
     <div class="container">
         <div class="header">
             <h1>📊 {stock_display_name} 股票分析報告</h1>
             <p>技術分析 + 基本面分析綜合評估</p>
             <p class="report-date">生成日期: {current_date}</p>
         </div>
+        
+        <div id="stock-{symbol}" class="stock-section">
         
         <div class="analysis-section">
             <div class="analysis-grid">
@@ -465,7 +628,104 @@ class StockVisualizer:
         </div>
     </div>
     
+    <button class="back-to-top" onclick="scrollToTop()" title="回到頂部">↑</button>
+    
     <script>
+        // 導航切換功能
+        function toggleNav() {{
+            const nav = document.getElementById('stockNav');
+            const container = document.querySelector('.container');
+            const overlay = document.getElementById('navOverlay');
+            
+            nav.classList.toggle('active');
+            
+            // 手機版顯示背景遮罩
+            if (window.innerWidth <= 768 && overlay) {{
+                overlay.classList.toggle('active');
+            }}
+            
+            // 只在桌面版調整容器邊距
+            if (window.innerWidth > 768) {{
+                container.classList.toggle('with-nav');
+            }}
+        }}
+        
+        // 平滑滾動到指定股票
+        function scrollToStock(symbol) {{
+            const element = document.getElementById('stock-' + symbol);
+            if (element) {{
+                element.scrollIntoView({{ 
+                    behavior: 'smooth',
+                    block: 'start'
+                }});
+                
+                // 手機版點擊後自動收起導航
+                if (window.innerWidth <= 768) {{
+                    setTimeout(() => {{
+                        const nav = document.getElementById('stockNav');
+                        const overlay = document.getElementById('navOverlay');
+                        nav.classList.remove('active');
+                        if (overlay) {{
+                            overlay.classList.remove('active');
+                        }}
+                    }}, 300); // 等待滾動動畫開始後收起
+                }}
+            }}
+        }}
+        
+        // 回到頂部
+        function scrollToTop() {{
+            window.scrollTo({{
+                top: 0,
+                behavior: 'smooth'
+            }});
+        }}
+        
+        // 響應式導航顯示控制
+        function handleResize() {{
+            const nav = document.getElementById('stockNav');
+            const toggle = document.querySelector('.nav-toggle');
+            const container = document.querySelector('.container');
+            const overlay = document.getElementById('navOverlay');
+            
+            if (window.innerWidth <= 768) {{
+                nav.classList.remove('active');
+                container.classList.remove('with-nav');
+                if (overlay) {{
+                    overlay.classList.remove('active');
+                }}
+                toggle.style.display = 'block';
+            }} else {{
+                nav.classList.add('active');
+                container.classList.add('with-nav');
+                if (overlay) {{
+                    overlay.classList.remove('active');
+                }}
+                toggle.style.display = 'block';
+            }}
+        }}
+        
+        // 頁面載入完成後初始化
+        window.addEventListener('load', function() {{
+            handleResize();
+            
+            // 添加滾動監聽，顯示/隱藏回到頂部按鈕
+            window.addEventListener('scroll', function() {{
+                const backToTop = document.querySelector('.back-to-top');
+                if (window.pageYOffset > 300) {{
+                    backToTop.style.display = 'block';
+                }} else {{
+                    backToTop.style.display = 'none';
+                }}
+            }});
+            
+            // 監聽視窗大小變化
+            window.addEventListener('resize', handleResize);
+        }});
+        
+        // 初始化回到頂部按鈕為隱藏
+        document.querySelector('.back-to-top').style.display = 'none';
+        
         // 價格比較圖表
         {price_chart}
         
@@ -520,18 +780,21 @@ class StockVisualizer:
             margin: 0 auto;
             background: white;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-left: 0;
             transition: margin-left 0.3s ease;
         }}
         
         .container.with-nav {{
             margin-left: 280px;
+            margin-right: 0;
+            max-width: calc(100vw - 280px);
         }}
         
         /* 手機版容器不受導航影響 */
         @media (max-width: 768px) {{
             .container {{
                 margin-left: 0 !important;
+                margin-right: 0 !important;
+                max-width: 100vw !important;
                 transition: none;
             }}
         }}
@@ -1476,51 +1739,96 @@ class StockVisualizer:
     
     def _create_technical_chart(self, analyzer):
         """
-        創建技術分析圖表 - 可重用函數
+        創建技術分析圖表 - 包含成交量分佈圖顯示平均成本
         """
         try:
             if analyzer.data is None or len(analyzer.data) < 10:
                 return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">數據不足，無法生成技術圖表</p>';"
             
-            # 使用原始數據，不進行額外的技術指標計算
+            # 使用原始數據
             df = analyzer.data.copy()
+            
+            # 計算技術指標
+            df['SMA_20'] = df['Close'].rolling(window=20, min_periods=1).mean()
+            df['SMA_50'] = df['Close'].rolling(window=50, min_periods=1).mean()
+            df['SMA_120'] = df['Close'].rolling(window=120, min_periods=1).mean()
+            
+            # 計算布林通道
+            df['BB_Middle'] = df['Close'].rolling(window=20, min_periods=1).mean()
+            bb_std = df['Close'].rolling(window=20, min_periods=1).std()
+            df['BB_Upper'] = df['BB_Middle'] + (bb_std * 2)
+            df['BB_Lower'] = df['BB_Middle'] - (bb_std * 2)
+            
+            # 計算成交量移動平均
+            df['Volume_MA_20'] = df['Volume'].rolling(window=20, min_periods=1).mean()
+            df['Volume_MA_50'] = df['Volume'].rolling(window=50, min_periods=1).mean()
+            
+            # 計算VWAP (Volume Weighted Average Price)
+            df['VWAP'] = (df['Close'] * df['Volume']).rolling(window=20, min_periods=1).sum() / df['Volume'].rolling(window=20, min_periods=1).sum()
+            
+            # 計算成本基礎分析 (3個月和6個月平均成本)
+            df['Cost_3M'] = df['Close'].rolling(window=60, min_periods=1).mean()
+            df['Cost_6M'] = df['Close'].rolling(window=120, min_periods=1).mean()
+            
+            # 計算成交量分佈 (固定範圍)
+            price_range = df['Close'].max() - df['Close'].min()
+            price_min = df['Close'].min()
+            price_max = df['Close'].max()
+            
+            # 創建價格區間 (20個區間)
+            num_bins = 20
+            bin_size = price_range / num_bins
+            volume_profile = []
+            
+            for i in range(num_bins):
+                bin_start = price_min + i * bin_size
+                bin_end = price_min + (i + 1) * bin_size
+                
+                # 計算該價格區間的成交量總和
+                mask = (df['Close'] >= bin_start) & (df['Close'] < bin_end)
+                if i == num_bins - 1:  # 最後一個區間包含最大值
+                    mask = (df['Close'] >= bin_start) & (df['Close'] <= bin_end)
+                
+                volume_sum = df.loc[mask, 'Volume'].sum()
+                volume_profile.append({
+                    'price_level': (bin_start + bin_end) / 2,
+                    'volume': volume_sum
+                })
+            
+            # 計算平均成本 (成交量加權平均價格)
+            total_volume = sum(item['volume'] for item in volume_profile)
+            if total_volume > 0:
+                avg_cost = sum(item['price_level'] * item['volume'] for item in volume_profile) / total_volume
+            else:
+                avg_cost = df['Close'].mean()
             
             # 準備圖表數據
             dates = df.index.strftime('%Y-%m-%d').tolist()
             close_prices = df['Close'].tolist()
+            volumes = df['Volume'].tolist()
+            
+            # 技術指標數據
+            sma_20 = df['SMA_20'].fillna(method='ffill').fillna(method='bfill').tolist()
+            sma_50 = df['SMA_50'].fillna(method='ffill').fillna(method='bfill').tolist()
+            sma_120 = df['SMA_120'].fillna(method='ffill').fillna(method='bfill').tolist()
+            bb_upper = df['BB_Upper'].fillna(method='ffill').fillna(method='bfill').tolist()
+            bb_lower = df['BB_Lower'].fillna(method='ffill').fillna(method='bfill').tolist()
+            vwap = df['VWAP'].fillna(method='ffill').fillna(method='bfill').tolist()
+            cost_3m = df['Cost_3M'].fillna(method='ffill').fillna(method='bfill').tolist()
+            cost_6m = df['Cost_6M'].fillna(method='ffill').fillna(method='bfill').tolist()
+            volume_ma_20 = df['Volume_MA_20'].fillna(method='ffill').fillna(method='bfill').tolist()
+            volume_ma_50 = df['Volume_MA_50'].fillna(method='ffill').fillna(method='bfill').tolist()
+            
+            # 成交量分佈數據
+            volume_profile_prices = [item['price_level'] for item in volume_profile]
+            volume_profile_volumes = [item['volume'] for item in volume_profile]
             
             # 將股票代碼中的點號替換為下劃線，使其成為有效的JavaScript變量名
             safe_symbol = analyzer.symbol.replace('.', '_')
             
             chart_js = f"""
             const technicalData_{safe_symbol} = [
-                // 股價圖表
-                {{
-                    x: {dates},
-                    y: {close_prices},
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: '股價',
-                    line: {{ color: '#333', width: 2 }},
-                    yaxis: 'y'
-                }}
-            ];
-            
-            const technicalLayout_{safe_symbol} = {{
-                title: '{analyzer.symbol} - {analyzer.long_name if analyzer.long_name and analyzer.long_name != analyzer.symbol else analyzer.symbol} 技術分析',
-                height: 400,
-                yaxis: {{ title: '股價 ($)' }},
-                margin: {{ l: 60, r: 40, t: 80, b: 60 }}
-            }};
-            
-            Plotly.newPlot('technical-chart-{analyzer.symbol}', technicalData_{safe_symbol}, technicalLayout_{safe_symbol});
-            """
-            
-            return chart_js
-            
-            chart_js = f"""
-            const technicalData_{safe_symbol} = [
-                // 股價圖表
+                // 主圖表 - 股價和技術指標
                 {{
                     x: {dates},
                     y: {close_prices},
@@ -1536,7 +1844,7 @@ class StockVisualizer:
                     type: 'scatter',
                     mode: 'lines',
                     name: '20MA',
-                    line: {{ color: 'blue', width: 2 }},
+                    line: {{ color: '#2196F3', width: 1.5 }},
                     yaxis: 'y'
                 }},
                 {{
@@ -1545,7 +1853,16 @@ class StockVisualizer:
                     type: 'scatter',
                     mode: 'lines',
                     name: '50MA',
-                    line: {{ color: 'orange', width: 2 }},
+                    line: {{ color: '#FF9800', width: 1.5 }},
+                    yaxis: 'y'
+                }},
+                {{
+                    x: {dates},
+                    y: {sma_120},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '120MA',
+                    line: {{ color: '#9C27B0', width: 1.5 }},
                     yaxis: 'y'
                 }},
                 {{
@@ -1554,7 +1871,7 @@ class StockVisualizer:
                     type: 'scatter',
                     mode: 'lines',
                     name: '布林上軌',
-                    line: {{ color: 'gray', dash: 'dash', width: 1 }},
+                    line: {{ color: '#666', dash: 'dash', width: 1 }},
                     yaxis: 'y'
                 }},
                 {{
@@ -1563,72 +1880,155 @@ class StockVisualizer:
                     type: 'scatter',
                     mode: 'lines',
                     name: '布林下軌',
-                    line: {{ color: 'gray', dash: 'dash', width: 1 }},
+                    line: {{ color: '#666', dash: 'dash', width: 1 }},
                     fill: 'tonexty',
                     fillcolor: 'rgba(128,128,128,0.1)',
                     yaxis: 'y'
                 }},
-                // RSI
                 {{
                     x: {dates},
-                    y: {rsi},
+                    y: {vwap},
                     type: 'scatter',
                     mode: 'lines',
-                    name: 'RSI',
-                    line: {{ color: 'purple', width: 1.5 }},
-                    yaxis: 'y2'
-                }},
-                // MACD
-                {{
-                    x: {dates},
-                    y: {macd},
-                    type: 'scatter',
-                    mode: 'lines',
-                    name: 'MACD',
-                    line: {{ color: 'blue', width: 1.5 }},
-                    yaxis: 'y3'
+                    name: 'VWAP',
+                    line: {{ color: '#E91E63', width: 1.5 }},
+                    yaxis: 'y'
                 }},
                 {{
                     x: {dates},
-                    y: {macd_signal},
+                    y: {cost_3m},
                     type: 'scatter',
                     mode: 'lines',
-                    name: 'MACD Signal',
-                    line: {{ color: 'red', width: 1.5 }},
-                    yaxis: 'y3'
+                    name: '3個月成本',
+                    line: {{ color: '#4CAF50', width: 1.5, dash: 'dot' }},
+                    yaxis: 'y'
                 }},
                 {{
                     x: {dates},
-                    y: {macd_histogram},
+                    y: {cost_6m},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '6個月成本',
+                    line: {{ color: '#795548', width: 1.5, dash: 'dot' }},
+                    yaxis: 'y'
+                }},
+                // 成交量圖表
+                {{
+                    x: {dates},
+                    y: {volumes},
                     type: 'bar',
-                    name: 'MACD Histogram',
+                    name: '成交量',
                     marker: {{
-                        color: {macd_histogram}.map(val => val >= 0 ? 'green' : 'red'),
+                        color: {volumes}.map((vol, i) => {close_prices}[i] >= {close_prices}[Math.max(0, i-1)] ? '#4CAF50' : '#F44336'),
                         opacity: 0.7
                     }},
+                    yaxis: 'y2'
+                }},
+                {{
+                    x: {dates},
+                    y: {volume_ma_20},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '成交量20MA',
+                    line: {{ color: '#2196F3', width: 1.5 }},
+                    yaxis: 'y2'
+                }},
+                {{
+                    x: {dates},
+                    y: {volume_ma_50},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '成交量50MA',
+                    line: {{ color: '#FF9800', width: 1.5 }},
+                    yaxis: 'y2'
+                }},
+                // 成交量分佈圖 (右側)
+                {{
+                    x: {volume_profile_volumes},
+                    y: {volume_profile_prices},
+                    type: 'bar',
+                    name: '成交量分佈',
+                    orientation: 'h',
+                    marker: {{
+                        color: 'rgba(75, 192, 192, 0.6)',
+                        line: {{
+                            color: 'rgba(75, 192, 192, 1)',
+                            width: 1
+                        }}
+                    }},
+                    xaxis: 'x2',
+                    yaxis: 'y3'
+                }},
+                // 平均成本線
+                {{
+                    x: [0, Math.max(...{volume_profile_volumes})],
+                    y: [{avg_cost}, {avg_cost}],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '平均成本',
+                    line: {{ color: '#E91E63', width: 2, dash: 'dash' }},
+                    xaxis: 'x2',
                     yaxis: 'y3'
                 }}
             ];
             
-                         const technicalLayout_{safe_symbol} = {{
-                 title: '{analyzer.symbol} - {analyzer.long_name if analyzer.long_name and analyzer.long_name != analyzer.symbol else analyzer.symbol} 技術分析',
+            const technicalLayout_{safe_symbol} = {{
+                title: '{analyzer.symbol} - {analyzer.long_name if analyzer.long_name and analyzer.long_name != analyzer.symbol else analyzer.symbol} 技術分析 (含成交量分佈)',
                 height: 600,
                 grid: {{
-                    rows: 3,
-                    columns: 1,
-                    pattern: 'independent'
+                    rows: 1,
+                    columns: 2,
+                    pattern: 'independent',
+                    rowheight: [1],
+                    columnwidth: [0.7, 0.3]
                 }},
-                yaxis: {{ title: '股價 ($)', domain: [0.67, 1] }},
+                // 主圖表區域
+                yaxis: {{ 
+                    title: '股價 ($)', 
+                    domain: [0.3, 1],
+                    side: 'left'
+                }},
                 yaxis2: {{ 
-                    title: 'RSI', 
-                    domain: [0.33, 0.66],
-                    range: [0, 100]
+                    title: '成交量', 
+                    domain: [0, 0.25],
+                    side: 'left'
+                }},
+                // 成交量分佈圖區域
+                xaxis2: {{ 
+                    title: '成交量',
+                    domain: [0.75, 1],
+                    side: 'top'
                 }},
                 yaxis3: {{ 
-                    title: 'MACD', 
-                    domain: [0, 0.32]
+                    title: '價格區間',
+                    domain: [0.3, 1],
+                    side: 'right'
                 }},
-                showlegend: false
+                showlegend: true,
+                legend: {{
+                    x: 0.02,
+                    y: 0.98,
+                    bgcolor: 'rgba(255,255,255,0.8)',
+                    bordercolor: '#ccc',
+                    borderwidth: 1
+                }},
+                annotations: [
+                    {{
+                        x: 0.85,
+                        y: 0.95,
+                        xref: 'paper',
+                        yref: 'paper',
+                        text: '平均成本: ${avg_cost:.2f}',
+                        showarrow: false,
+                        font: {{
+                            size: 12,
+                            color: '#E91E63'
+                        }},
+                        bgcolor: 'rgba(255,255,255,0.8)',
+                        bordercolor: '#E91E63',
+                        borderwidth: 1
+                    }}
+                ]
             }};
             
             Plotly.newPlot('technical-chart-{analyzer.symbol}', technicalData_{safe_symbol}, technicalLayout_{safe_symbol});
