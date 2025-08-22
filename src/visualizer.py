@@ -1176,8 +1176,8 @@ class StockVisualizer:
     def _create_right_analysis_panel(self, analyzer, signal_data, signal_str):
          """創建右側信號分析面板"""
          try:
-             # 獲取技術指標數據
-             data = analyzer.data.tail(50)  # 取最近50天數據
+             # 獲取技術指標數據 - 使用足夠的數據來計算6個月平均成本
+             data = analyzer.data.tail(120)  # 取最近120天數據以支持6個月計算
              
              # 計算布林通道
              bb_period = 20
@@ -1269,27 +1269,33 @@ class StockVisualizer:
                      </div>
                  </div>
                  
-                 <!-- 價量分析 -->
-                 <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #FF9800;">
-                     <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">📊 價量分析</h5>
-                     <div style="font-size: 0.85em; line-height: 1.4;">
-                         <div style="margin-bottom: 5px;">
-                             <span style="color: #333; font-weight: bold;">當前價格:</span> ${current_price:.2f}
-                         </div>
-                         <div style="margin-bottom: 5px;">
-                             <span style="color: #333; font-weight: bold;">平均成本:</span> ${volume_analysis['avg_cost']:.2f}
-                         </div>
-                         <div style="margin-bottom: 5px;">
-                             <span style="color: {volume_analysis['cost_color']}; font-weight: bold;">成本偏離:</span> {volume_analysis['cost_deviation']:.1f}%
-                         </div>
-                         <div style="margin-bottom: 5px;">
-                             <span style="color: {volume_analysis['pressure_color']}; font-weight: bold;">市場壓力:</span> {volume_analysis['pressure_type']}
-                         </div>
-                         <div style="margin-bottom: 5px;">
-                             <span style="color: #333; font-weight: bold;">成交量趨勢:</span> {volume_analysis['volume_trend']}
-                         </div>
-                     </div>
-                 </div>
+                                   <!-- 價量分析 -->
+                  <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #FF9800;">
+                      <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">📊 價量分析</h5>
+                      <div style="font-size: 0.85em; line-height: 1.4;">
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: #333; font-weight: bold;">當前價格:</span> ${current_price:.2f}
+                          </div>
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: #333; font-weight: bold;">3個月平均成本:</span> ${volume_analysis['avg_cost_3m']:.2f}
+                          </div>
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: {volume_analysis['cost_3m_color']}; font-weight: bold;">3個月偏離:</span> {volume_analysis['cost_deviation_3m']:.1f}%
+                          </div>
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: #333; font-weight: bold;">6個月平均成本:</span> ${volume_analysis['avg_cost_6m']:.2f}
+                          </div>
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: {volume_analysis['cost_6m_color']}; font-weight: bold;">6個月偏離:</span> {volume_analysis['cost_deviation_6m']:.1f}%
+                          </div>
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: {volume_analysis['pressure_color']}; font-weight: bold;">市場壓力:</span> {volume_analysis['pressure_type']}
+                          </div>
+                          <div style="margin-bottom: 5px;">
+                              <span style="color: #333; font-weight: bold;">成交量趨勢:</span> {volume_analysis['volume_trend']}
+                          </div>
+                      </div>
+                  </div>
              </div>
              '''
          except Exception as e:
@@ -1326,7 +1332,7 @@ class StockVisualizer:
                 if not hasattr(analyzer, 'data') or analyzer.data.empty:
                     continue
                 
-                data = analyzer.data.tail(50)  # 取最近50天數據
+                data = analyzer.data.tail(120)  # 取最近120天數據以支持6個月計算
                 
                 # 計算技術指標
                 # 布林通道
@@ -1403,71 +1409,80 @@ class StockVisualizer:
         }
     
     def _analyze_volume_price(self, data):
-         """分析價量關係"""
-         try:
-             # 計算成交量加權平均價格 (VWAP)
-             data['VWAP'] = (data['Close'] * data['Volume']).cumsum() / data['Volume'].cumsum()
-             
-             # 計算不同時間範圍的平均成本
-             current_price = data['Close'].iloc[-1]
-             
-             # 20天平均成本
-             avg_cost_20 = data['Close'].tail(20).mean()
-             
-             # 50天平均成本
-             avg_cost_50 = data['Close'].tail(50).mean()
-             
-             # 使用VWAP作為主要平均成本
-             avg_cost = data['VWAP'].iloc[-1]
-             
-             # 計算成本偏離度
-             cost_deviation = ((current_price - avg_cost) / avg_cost) * 100
-             
-             # 判斷市場壓力
-             if cost_deviation > 30:
-                 pressure_type = "強烈賣壓風險"
-                 pressure_color = "#f44336"
-             elif cost_deviation > 15:
-                 pressure_type = "中等賣壓風險"
-                 pressure_color = "#ff9800"
-             elif cost_deviation < -30:
-                 pressure_type = "強烈支撐"
-                 pressure_color = "#4CAF50"
-             elif cost_deviation < -15:
-                 pressure_type = "中等支撐"
-                 pressure_color = "#2196F3"
-             else:
-                 pressure_type = "整盤整理"
-                 pressure_color = "#666"
-             
-             # 分析成交量趨勢
-             recent_volume = data['Volume'].tail(5).mean()
-             historical_volume = data['Volume'].tail(20).mean()
-             volume_ratio = recent_volume / historical_volume if historical_volume > 0 else 1
-             
-             if volume_ratio > 1.5:
-                 volume_trend = "放量"
-             elif volume_ratio < 0.7:
-                 volume_trend = "縮量"
-             else:
-                 volume_trend = "正常"
-             
-             return {
-                 'avg_cost': avg_cost,
-                 'cost_deviation': cost_deviation,
-                 'pressure_type': pressure_type,
-                 'pressure_color': pressure_color,
-                 'volume_trend': volume_trend,
-                 'cost_color': "#f44336" if cost_deviation > 15 else "#4CAF50" if cost_deviation < -15 else "#666"
-             }
-             
-         except Exception as e:
-             print(f"價量分析時發生錯誤: {e}")
-             return {
-                 'avg_cost': current_price,
-                 'cost_deviation': 0,
-                 'pressure_type': "分析失敗",
-                 'pressure_color': "#666",
-                 'volume_trend': "N/A",
-                 'cost_color': "#666"
-             }
+        """分析價量關係"""
+        try:
+            # 計算成交量加權平均價格 (VWAP)
+            data['VWAP'] = (data['Close'] * data['Volume']).cumsum() / data['Volume'].cumsum()
+            
+            # 計算不同時間範圍的平均成本
+            current_price = data['Close'].iloc[-1]
+            
+            # 3個月平均成本 (約60個交易日) - 使用成交量加權平均價格
+            data_3m = data.tail(min(60, len(data)))
+            avg_cost_3m = (data_3m['Close'] * data_3m['Volume']).sum() / data_3m['Volume'].sum() if data_3m['Volume'].sum() > 0 else data_3m['Close'].mean()
+            
+            # 6個月平均成本 (約120個交易日) - 使用成交量加權平均價格
+            data_6m = data.tail(min(120, len(data)))
+            avg_cost_6m = (data_6m['Close'] * data_6m['Volume']).sum() / data_6m['Volume'].sum() if data_6m['Volume'].sum() > 0 else data_6m['Close'].mean()
+            
+            # 計算3個月成本偏離度
+            cost_deviation_3m = ((current_price - avg_cost_3m) / avg_cost_3m) * 100
+            
+            # 計算6個月成本偏離度
+            cost_deviation_6m = ((current_price - avg_cost_6m) / avg_cost_6m) * 100
+            
+            # 使用3個月和6個月偏離度綜合判斷市場壓力
+            # 如果任一期間偏離度超過閾值，就顯示相應的壓力類型
+            if cost_deviation_3m > 30 or cost_deviation_6m > 30:
+                pressure_type = "強烈賣壓風險"
+                pressure_color = "#f44336"
+            elif cost_deviation_3m > 15 or cost_deviation_6m > 15:
+                pressure_type = "中等賣壓風險"
+                pressure_color = "#ff9800"
+            elif cost_deviation_3m < -30 or cost_deviation_6m < -30:
+                pressure_type = "強烈支撐"
+                pressure_color = "#4CAF50"
+            elif cost_deviation_3m < -15 or cost_deviation_6m < -15:
+                pressure_type = "中等支撐"
+                pressure_color = "#2196F3"
+            else:
+                pressure_type = "整盤整理"
+                pressure_color = "#666"
+            
+            # 分析成交量趨勢
+            recent_volume = data['Volume'].tail(5).mean()
+            historical_volume = data['Volume'].tail(20).mean()
+            volume_ratio = recent_volume / historical_volume if historical_volume > 0 else 1
+            
+            if volume_ratio > 1.5:
+                volume_trend = "放量"
+            elif volume_ratio < 0.7:
+                volume_trend = "縮量"
+            else:
+                volume_trend = "正常"
+            
+            return {
+                'avg_cost_3m': avg_cost_3m,
+                'avg_cost_6m': avg_cost_6m,
+                'cost_deviation_3m': cost_deviation_3m,
+                'cost_deviation_6m': cost_deviation_6m,
+                'pressure_type': pressure_type,
+                'pressure_color': pressure_color,
+                'volume_trend': volume_trend,
+                'cost_3m_color': "#f44336" if cost_deviation_3m > 15 else "#4CAF50" if cost_deviation_3m < -15 else "#666",
+                'cost_6m_color': "#f44336" if cost_deviation_6m > 15 else "#4CAF50" if cost_deviation_6m < -15 else "#666"
+            }
+            
+        except Exception as e:
+            print(f"價量分析時發生錯誤: {e}")
+            return {
+                'avg_cost_3m': current_price,
+                'avg_cost_6m': current_price,
+                'cost_deviation_3m': 0,
+                'cost_deviation_6m': 0,
+                'pressure_type': "分析失敗",
+                'pressure_color': "#666",
+                'volume_trend': "N/A",
+                'cost_3m_color': "#666",
+                'cost_6m_color': "#666"
+            }
