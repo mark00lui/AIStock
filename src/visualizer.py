@@ -564,17 +564,17 @@ class StockVisualizer:
         '''
     
     def _create_header_html(self, title, subtitle=None, date=None):
-        """創建標題HTML"""
-        current_date = date or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sub_text = subtitle or "技術分析 + 基本面分析綜合評估"
-        
-        return f'''
-        <div class="header">
-            <h1>{title}</h1>
-            <p>{sub_text}</p>
-            <p class="report-date">生成日期: {current_date}</p>
-        </div>
-        '''
+         """創建標題HTML"""
+         current_date = date or datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+         sub_text = subtitle or "左側分析 + 右側分析綜合評估"
+         
+         return f'''
+         <div class="header">
+             <h1>{title}</h1>
+             <p>{sub_text}</p>
+             <p class="report-date">生成日期: {current_date}</p>
+         </div>
+         '''
     
     def _create_stock_card_html(self, result):
         """創建單一股票卡片HTML"""
@@ -680,22 +680,8 @@ class StockVisualizer:
         </div>
         '''
         
-        # 創建技術分析面板
-        tech_panel = f'''
-        <div class="analysis-panel">
-            <h4>📈 技術信號分析</h4>
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="label">主要信號:</span>
-                    <span class="value">{signal_str}</span>
-                </div>
-                <div class="info-item">
-                    <span class="label">信號強度:</span>
-                    <span class="value">{signal_data.get('strength', 'N/A') if isinstance(signal_data, dict) else 'N/A'}</span>
-                </div>
-            </div>
-        </div>
-        '''
+        # 創建右側信號分析面板
+        tech_panel = self._create_right_analysis_panel(analyzer, signal_data, signal_str)
         
         # 創建圖表
         price_chart = self._create_enhanced_price_chart(symbol, current_price, year1_data, stock_display_name)
@@ -956,26 +942,26 @@ class StockVisualizer:
         sell_signals = [r for r in results if 'Sell' in str(r.get('signal', ''))]
         hold_signals = [r for r in results if 'Hold' in str(r.get('signal', ''))]
         
-        # 創建技術分析摘要
+        # 創建右側分析摘要
         tech_summary = f'''
-        <div class="summary-card">
-            <h3>📈 技術分析摘要</h3>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div style="font-size: 2em; color: #4CAF50; font-weight: bold;">{len(buy_signals)}</div>
-                    <div>買入信號</div>
-                </div>
-                <div class="stat-item">
-                    <div style="font-size: 2em; color: #ff9800; font-weight: bold;">{len(hold_signals)}</div>
-                    <div>持有信號</div>
-                </div>
-                <div class="stat-item">
-                    <div style="font-size: 2em; color: #f44336; font-weight: bold;">{len(sell_signals)}</div>
-                    <div>賣出信號</div>
-                </div>
-            </div>
-        </div>
-        '''
+         <div class="summary-card">
+             <h3>📈 右側分析摘要</h3>
+             <div class="stats-grid">
+                 <div class="stat-item">
+                     <div style="font-size: 2em; color: #4CAF50; font-weight: bold;">{len(buy_signals)}</div>
+                     <div>買入信號</div>
+                 </div>
+                 <div class="stat-item">
+                     <div style="font-size: 2em; color: #ff9800; font-weight: bold;">{len(hold_signals)}</div>
+                     <div>持有信號</div>
+                 </div>
+                 <div class="stat-item">
+                     <div style="font-size: 2em; color: #f44336; font-weight: bold;">{len(sell_signals)}</div>
+                     <div>賣出信號</div>
+                 </div>
+             </div>
+         </div>
+         '''
         
         # 創建左側分析摘要
         left_summary = f'''
@@ -1170,13 +1156,224 @@ class StockVisualizer:
             return "N/A"
     
     def _get_macd_signal_color(self, macd_value, macd_signal_value):
-        """獲取MACD信號顏色"""
-        try:
-            macd = float(macd_value)
-            macd_signal = float(macd_signal_value)
-            if macd > macd_signal:
-                return "#4CAF50"  # 綠色
-            else:
-                return "#f44336"  # 紅色
-        except:
-            return "#666"
+         """獲取MACD信號顏色"""
+         try:
+             macd = float(macd_value)
+             macd_signal = float(macd_signal_value)
+             if macd > macd_signal:
+                 return "#4CAF50"  # 綠色
+             else:
+                 return "#f44336"  # 紅色
+         except:
+             return "#666"
+     
+    def _create_right_analysis_panel(self, analyzer, signal_data, signal_str):
+         """創建右側信號分析面板"""
+         try:
+             # 獲取技術指標數據
+             data = analyzer.data.tail(50)  # 取最近50天數據
+             
+             # 計算布林通道
+             bb_period = 20
+             bb_std = 2
+             bb_middle = data['Close'].rolling(window=bb_period).mean()
+             bb_std_dev = data['Close'].rolling(window=bb_period).std()
+             bb_upper = bb_middle + (bb_std_dev * bb_std)
+             bb_lower = bb_middle - (bb_std_dev * bb_std)
+             
+             current_price = data['Close'].iloc[-1]
+             current_bb_upper = bb_upper.iloc[-1]
+             current_bb_lower = bb_lower.iloc[-1]
+             current_bb_middle = bb_middle.iloc[-1]
+             
+             # 布林通道評分
+             bb_position = (current_price - current_bb_lower) / (current_bb_upper - current_bb_lower) if current_bb_upper != current_bb_lower else 0.5
+             if bb_position > 0.8:
+                 bb_score = "超買"
+                 bb_color = "#f44336"
+             elif bb_position < 0.2:
+                 bb_score = "超賣"
+                 bb_color = "#4CAF50"
+             else:
+                 bb_score = "正常"
+                 bb_color = "#2196F3"
+             
+             # 計算RSI
+             rsi_period = 14
+             delta = data['Close'].diff()
+             gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
+             loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
+             rs = gain / loss
+             rsi = 100 - (100 / (1 + rs))
+             current_rsi = rsi.iloc[-1]
+             
+             # RSI評分
+             if current_rsi > 70:
+                 rsi_score = "超買"
+                 rsi_color = "#f44336"
+             elif current_rsi < 30:
+                 rsi_score = "超賣"
+                 rsi_color = "#4CAF50"
+             else:
+                 rsi_score = "正常"
+                 rsi_color = "#2196F3"
+             
+             # 計算MACD
+             exp1 = data['Close'].ewm(span=12).mean()
+             exp2 = data['Close'].ewm(span=26).mean()
+             macd_line = exp1 - exp2
+             macd_signal = macd_line.ewm(span=9).mean()
+             current_macd = macd_line.iloc[-1]
+             current_macd_signal = macd_signal.iloc[-1]
+             
+             # MACD評分
+             if current_macd > current_macd_signal:
+                 macd_score = "看多"
+                 macd_color = "#4CAF50"
+             else:
+                 macd_score = "看空"
+                 macd_color = "#f44336"
+             
+             # 價量分析
+             volume_analysis = self._analyze_volume_price(data)
+             
+             return f'''
+             <div class="analysis-panel">
+                 <h4>📈 右側信號分析</h4>
+                 <div class="info-grid">
+                     <div class="info-item">
+                         <span class="label">主要信號:</span>
+                         <span class="value">{signal_str}</span>
+                     </div>
+                     <div class="info-item">
+                         <span class="label">信號強度:</span>
+                         <span class="value">{signal_data.get('strength', 'N/A') if isinstance(signal_data, dict) else 'N/A'}</span>
+                     </div>
+                     <div class="info-item">
+                         <span class="label">布林通道:</span>
+                         <span class="value" style="color: {bb_color};">{bb_score}</span>
+                     </div>
+                     <div class="info-item">
+                         <span class="label">RSI (14):</span>
+                         <span class="value" style="color: {rsi_color};">{current_rsi:.1f} ({rsi_score})</span>
+                     </div>
+                     <div class="info-item">
+                         <span class="label">MACD:</span>
+                         <span class="value" style="color: {macd_color};">{macd_score}</span>
+                     </div>
+                 </div>
+                 
+                 <!-- 價量分析 -->
+                 <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #FF9800;">
+                     <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">📊 價量分析</h5>
+                     <div style="font-size: 0.85em; line-height: 1.4;">
+                         <div style="margin-bottom: 5px;">
+                             <span style="color: #333; font-weight: bold;">當前價格:</span> ${current_price:.2f}
+                         </div>
+                         <div style="margin-bottom: 5px;">
+                             <span style="color: #333; font-weight: bold;">平均成本:</span> ${volume_analysis['avg_cost']:.2f}
+                         </div>
+                         <div style="margin-bottom: 5px;">
+                             <span style="color: {volume_analysis['cost_color']}; font-weight: bold;">成本偏離:</span> {volume_analysis['cost_deviation']:.1f}%
+                         </div>
+                         <div style="margin-bottom: 5px;">
+                             <span style="color: {volume_analysis['pressure_color']}; font-weight: bold;">市場壓力:</span> {volume_analysis['pressure_type']}
+                         </div>
+                         <div style="margin-bottom: 5px;">
+                             <span style="color: #333; font-weight: bold;">成交量趨勢:</span> {volume_analysis['volume_trend']}
+                         </div>
+                     </div>
+                 </div>
+             </div>
+             '''
+         except Exception as e:
+             print(f"創建右側分析面板時發生錯誤: {e}")
+             return f'''
+             <div class="analysis-panel">
+                 <h4>📈 右側信號分析</h4>
+                 <div class="info-grid">
+                     <div class="info-item">
+                         <span class="label">主要信號:</span>
+                         <span class="value">{signal_str}</span>
+                     </div>
+                     <div class="info-item">
+                         <span class="label">信號強度:</span>
+                         <span class="value">{signal_data.get('strength', 'N/A') if isinstance(signal_data, dict) else 'N/A'}</span>
+                     </div>
+                     <div class="info-item">
+                         <span class="label">分析狀態:</span>
+                         <span class="value" style="color: #f44336;">數據不足</span>
+                     </div>
+                 </div>
+             </div>
+             '''
+     
+    def _analyze_volume_price(self, data):
+         """分析價量關係"""
+         try:
+             # 計算成交量加權平均價格 (VWAP)
+             data['VWAP'] = (data['Close'] * data['Volume']).cumsum() / data['Volume'].cumsum()
+             
+             # 計算不同時間範圍的平均成本
+             current_price = data['Close'].iloc[-1]
+             
+             # 20天平均成本
+             avg_cost_20 = data['Close'].tail(20).mean()
+             
+             # 50天平均成本
+             avg_cost_50 = data['Close'].tail(50).mean()
+             
+             # 使用VWAP作為主要平均成本
+             avg_cost = data['VWAP'].iloc[-1]
+             
+             # 計算成本偏離度
+             cost_deviation = ((current_price - avg_cost) / avg_cost) * 100
+             
+             # 判斷市場壓力
+             if cost_deviation > 30:
+                 pressure_type = "強烈賣壓風險"
+                 pressure_color = "#f44336"
+             elif cost_deviation > 15:
+                 pressure_type = "中等賣壓風險"
+                 pressure_color = "#ff9800"
+             elif cost_deviation < -30:
+                 pressure_type = "強烈支撐"
+                 pressure_color = "#4CAF50"
+             elif cost_deviation < -15:
+                 pressure_type = "中等支撐"
+                 pressure_color = "#2196F3"
+             else:
+                 pressure_type = "整盤整理"
+                 pressure_color = "#666"
+             
+             # 分析成交量趨勢
+             recent_volume = data['Volume'].tail(5).mean()
+             historical_volume = data['Volume'].tail(20).mean()
+             volume_ratio = recent_volume / historical_volume if historical_volume > 0 else 1
+             
+             if volume_ratio > 1.5:
+                 volume_trend = "放量"
+             elif volume_ratio < 0.7:
+                 volume_trend = "縮量"
+             else:
+                 volume_trend = "正常"
+             
+             return {
+                 'avg_cost': avg_cost,
+                 'cost_deviation': cost_deviation,
+                 'pressure_type': pressure_type,
+                 'pressure_color': pressure_color,
+                 'volume_trend': volume_trend,
+                 'cost_color': "#f44336" if cost_deviation > 15 else "#4CAF50" if cost_deviation < -15 else "#666"
+             }
+             
+         except Exception as e:
+             print(f"價量分析時發生錯誤: {e}")
+             return {
+                 'avg_cost': current_price,
+                 'cost_deviation': 0,
+                 'pressure_type': "分析失敗",
+                 'pressure_color': "#666",
+                 'volume_trend': "N/A",
+                 'cost_color': "#666"
+             }
