@@ -616,7 +616,14 @@ class GeminiStockAnalyzer:
     }},
     "recent_news": "近期最重大新聞消息（30字內）",
     "ai_judgment": "AI對該消息的判斷（30字內）",
-    "sentiment": "看漲/看跌/中性"
+    "sentiment": "看漲/看跌/中性",
+    "risk_metrics": {{
+        "beta": 數值（如1.25，相對於對應市場指數的Beta值，必須是數字）,
+        "volatility": 數值（如35.5，年化波動率百分比，必須是數字）,
+        "sharpe_ratio": 數值（如0.85，夏普比率，必須是數字）,
+        "market_correlation": 數值（如0.72，與市場相關性係數，必須是數字）,
+        "risk_level": "極低/低/中/高/極高"
+    }}
 }}
 
 重要要求：
@@ -625,6 +632,12 @@ class GeminiStockAnalyzer:
 3. 使用台灣地區的金融術語和表達方式
 4. 確保搜尋到最新的中英文新聞資料
 5. 只返回JSON格式，不要其他說明
+6. 風險指標必須提供精確的數值：
+   - beta: 必須是數字（如1.25），表示相對於市場指數的Beta值
+   - volatility: 必須是數字（如35.5），表示年化波動率百分比
+   - sharpe_ratio: 必須是數字（如0.85），表示夏普比率
+   - market_correlation: 必須是數字（如0.72），表示與市場相關性係數
+   - risk_level: 文字描述（極低/低/中/高/極高）
 """
         
         return prompt
@@ -670,7 +683,7 @@ class GeminiStockAnalyzer:
 請返回以下JSON格式：
 {{
     "stocks": {{
-        {', '.join([f'"{symbol}": {{"symbol": "{symbol}", "price_forecast": {{"price_1y": "一年後股價範圍", "price_3y": "三年後股價範圍", "price_5y": "五年後股價範圍"}}, "recent_news": "近期最重大新聞消息（30字內）", "ai_judgment": "AI對該消息的判斷（30字內）", "sentiment": "看漲/看跌/中性"}}' for symbol in symbols])}
+        {', '.join([f'"{symbol}": {{"symbol": "{symbol}", "price_forecast": {{"price_1y": "一年後股價範圍", "price_3y": "三年後股價範圍", "price_5y": "五年後股價範圍"}}, "recent_news": "近期最重大新聞消息（30字內）", "ai_judgment": "AI對該消息的判斷（30字內）", "sentiment": "看漲/看跌/中性", "risk_metrics": {{"beta": 數值（如1.25，相對於對應市場指數的Beta值，必須是數字）, "volatility": 數值（如35.5，年化波動率百分比，必須是數字）, "sharpe_ratio": 數值（如0.85，夏普比率，必須是數字）, "market_correlation": 數值（如0.72，與市場相關性係數，必須是數字）, "risk_level": "極低/低/中/高/極高"}}}}' for symbol in symbols])}
     }}
 }}
 
@@ -680,6 +693,12 @@ class GeminiStockAnalyzer:
 3. 使用台灣地區的金融術語和表達方式
 4. 確保搜尋到最新的中英文新聞資料
 5. 只返回JSON格式，不要其他說明
+6. 風險指標必須提供精確的數值：
+   - beta: 必須是數字（如1.25），表示相對於市場指數的Beta值
+   - volatility: 必須是數字（如35.5），表示年化波動率百分比
+   - sharpe_ratio: 必須是數字（如0.85），表示夏普比率
+   - market_correlation: 必須是數字（如0.72），表示與市場相關性係數
+   - risk_level: 文字描述（極低/低/中/高/極高）
 """
         
         return prompt
@@ -1054,7 +1073,14 @@ class GeminiStockAnalyzer:
                 },
                 "recent_news": "近期最重大新聞消息（30字內）",
                 "ai_judgment": "AI對該消息的判斷（30字內）",
-                "sentiment": sentiment
+                "sentiment": sentiment,
+                "risk_metrics": {
+                    "beta": 1.25,
+                    "volatility": 35.5,
+                    "sharpe_ratio": 0.85,
+                    "market_correlation": 0.72,
+                    "risk_level": "高"
+                }
             }
         
         return {"stocks": stocks_data}

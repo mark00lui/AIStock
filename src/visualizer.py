@@ -2289,11 +2289,40 @@ class StockVisualizer:
         recent_news = gemini_data.get('recent_news', 'N/A')
         ai_judgment = gemini_data.get('ai_judgment', 'N/A')
         sentiment = gemini_data.get('sentiment', 'N/A')
+        risk_metrics = gemini_data.get('risk_metrics', {})
         
         # 格式化數據
         price_1y = price_forecast.get('price_1y', 'N/A')
         price_3y = price_forecast.get('price_3y', 'N/A')
         price_5y = price_forecast.get('price_5y', 'N/A')
+        
+        # 提取風險指標並格式化
+        beta_raw = risk_metrics.get('beta', 'N/A')
+        volatility_raw = risk_metrics.get('volatility', 'N/A')
+        sharpe_ratio_raw = risk_metrics.get('sharpe_ratio', 'N/A')
+        market_correlation_raw = risk_metrics.get('market_correlation', 'N/A')
+        risk_level = risk_metrics.get('risk_level', 'N/A')
+        
+        # 格式化數值顯示
+        try:
+            beta = f"{float(beta_raw):.2f}" if beta_raw != 'N/A' else 'N/A'
+        except (ValueError, TypeError):
+            beta = str(beta_raw)
+            
+        try:
+            volatility = f"{float(volatility_raw):.1f}%" if volatility_raw != 'N/A' else 'N/A'
+        except (ValueError, TypeError):
+            volatility = str(volatility_raw)
+            
+        try:
+            sharpe_ratio = f"{float(sharpe_ratio_raw):.2f}" if sharpe_ratio_raw != 'N/A' else 'N/A'
+        except (ValueError, TypeError):
+            sharpe_ratio = str(sharpe_ratio_raw)
+            
+        try:
+            market_correlation = f"{float(market_correlation_raw):.2f}" if market_correlation_raw != 'N/A' else 'N/A'
+        except (ValueError, TypeError):
+            market_correlation = str(market_correlation_raw)
         
         # 設置顏色
         sentiment_color = '#4CAF50' if '看漲' in sentiment else '#F44336' if '看跌' in sentiment else '#FF9800'
@@ -2340,6 +2369,35 @@ class StockVisualizer:
                                 <div>
                                     <span style="font-weight: bold;">AI判斷:</span>
                                     <div style="margin-top: 3px;">{ai_judgment}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI風險指標 -->
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📊 AI風險指標</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <span style="font-weight: bold;">Beta值:</span>
+                                        <div style="margin-top: 3px;">{beta}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">波動率:</span>
+                                        <div style="margin-top: 3px;">{volatility}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">夏普比率:</span>
+                                        <div style="margin-top: 3px;">{sharpe_ratio}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">風險等級:</span>
+                                        <div style="margin-top: 3px;">{risk_level}</div>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <span style="font-weight: bold;">市場相關性:</span>
+                                    <div style="margin-top: 3px;">{market_correlation}</div>
                                 </div>
                             </div>
                         </div>
