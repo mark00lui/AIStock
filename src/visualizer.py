@@ -682,42 +682,33 @@ class StockVisualizer:
         
         # 創建右側信號分析面板
         tech_panel = self._create_right_analysis_panel(analyzer, signal_data, signal_str)
-        
-        # 創建圖表
-        price_chart = self._create_enhanced_price_chart(symbol, current_price, year1_data, stock_display_name)
+         
+        # 創建技術分析圖表
         technical_chart = self._create_technical_chart(analyzer)
         
         return f'''
-        <div class="stock-card" id="stock-{symbol}">
-            <div class="stock-header">
-                <h3>{stock_display_name}</h3>
-                <span class="signal-badge signal-{signal_class}">{signal_str}</span>
-            </div>
-            
-            <div class="analysis-layout">
-                {left_panel}
-                {tech_panel}
-            </div>
-            
-            <div class="chart-container">
-                <h5>📊 價格比較圖</h5>
-                <div id="price-chart-{symbol}" style="height: 400px;"></div>
-            </div>
-            
-            <div class="chart-container">
-                <h5>📈 技術分析圖表</h5>
-                <div id="technical-chart-{symbol}" style="height: 600px;"></div>
-            </div>
-        </div>
-        
-        <script>
-            // 價格比較圖表
-            {price_chart}
-            
-            // 技術分析圖表
-            {technical_chart}
-        </script>
-        '''
+         <div class="stock-card" id="stock-{symbol}">
+             <div class="stock-header">
+                 <h3>{stock_display_name}</h3>
+                 <span class="signal-badge signal-{signal_class}">{signal_str}</span>
+             </div>
+             
+             <div class="analysis-layout">
+                 {left_panel}
+                 {tech_panel}
+             </div>
+             
+             <div class="chart-container">
+                 <h5>📈 技術分析圖表</h5>
+                 <div id="technical-chart-{symbol}" style="height: 600px;"></div>
+             </div>
+         </div>
+         
+         <script>
+             // 技術分析圖表
+             {technical_chart}
+         </script>
+         '''
     
     def create_single_stock_report(self, analyzer, output_file):
         """創建單一股票分析報告"""
