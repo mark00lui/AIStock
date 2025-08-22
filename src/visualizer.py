@@ -2038,7 +2038,7 @@ class StockVisualizer:
                     </div>
                     
                     <div class="analysis-panel">
-                        <h4>📈 右側技術分析</h4>
+                        <h4>📈 技術信號分析</h4>
                         <div class="info-grid">
                             <div class="info-item">
                                 <span class="label">主要信號:</span>
@@ -2048,70 +2048,36 @@ class StockVisualizer:
                                 <span class="label">信號強度:</span>
                                 <span class="value">{signal_data.get('strength', 'N/A') if isinstance(signal_data, dict) else 'N/A'}</span>
                             </div>
-                            <div class="info-item">
-                                <span class="label">年化波動率:</span>
-                                <span class="value" style="color: {self._get_volatility_color(summary.get('volatility', 'N/A'))};">
-                                    {summary.get('volatility', 'N/A')}%
-                                </span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">Beta值:</span>
-                                <span class="value" style="color: {self._get_beta_color(summary.get('beta', 'N/A'))};">
-                                    {summary.get('beta', 'N/A')}
-                                </span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">風險等級:</span>
-                                <span class="value" style="color: {self._get_risk_level_color(summary.get('risk_level', 'N/A'))};">
-                                    {summary.get('risk_level', 'N/A')}
-                                </span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">Beta風險:</span>
-                                <span class="value" style="color: {self._get_beta_risk_color(summary.get('beta_risk', 'N/A'))};">
-                                    {summary.get('beta_risk', 'N/A')}
-                                </span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">夏普比率:</span>
-                                <span class="value" style="color: {self._get_sharpe_color(summary.get('sharpe_ratio', 'N/A'))};">
-                                    {summary.get('sharpe_ratio', 'N/A')}
-                                </span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">年化報酬率:</span>
-                                <span class="value" style="color: {self._get_return_color(summary.get('annual_return', 'N/A'))};">
-                                    {summary.get('annual_return', 'N/A')}%
-                                </span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">市場相關性:</span>
-                                <span class="value">{summary.get('correlation', 'N/A')}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">對應指數:</span>
-                                <span class="value">{summary.get('market_symbol', 'N/A')}</span>
+                        </div>
+                        
+                        <!-- 技術指標評分 -->
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📊 技術指標評分</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <span style="font-weight: bold;">RSI評分:</span>
+                                        <div style="margin-top: 3px; color: {self._get_rsi_signal_color(summary.get('rsi', 'N/A'))};">{self._get_rsi_signal(summary.get('rsi', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">MACD評分:</span>
+                                        <div style="margin-top: 3px; color: {self._get_macd_signal_color(summary.get('macd', 'N/A'), summary.get('macd_signal', 'N/A'))};">{self._get_macd_signal(summary.get('macd', 'N/A'), summary.get('macd_signal', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">布林通道評分:</span>
+                                        <div style="margin-top: 3px; color: {self._get_bollinger_signal_color(summary.get('close', 'N/A'), summary.get('bb_upper', 'N/A'), summary.get('bb_lower', 'N/A'))};">{self._get_bollinger_signal(summary.get('close', 'N/A'), summary.get('bb_upper', 'N/A'), summary.get('bb_lower', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">移動平均評分:</span>
+                                        <div style="margin-top: 3px; color: {self._get_ma_signal_color(summary.get('close', 'N/A'), summary.get('sma_20', 'N/A'), summary.get('sma_50', 'N/A'))};">{self._get_ma_signal(summary.get('close', 'N/A'), summary.get('sma_20', 'N/A'), summary.get('sma_50', 'N/A'))}</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
-                        <!-- 風險提醒區塊 -->
-                        <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
-                            <h5 style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">⚠️ 風險提醒</h5>
-                            <div style="font-size: 0.85em; line-height: 1.4; color: #856404;">
-                                {self._generate_risk_warning(summary)}
-                            </div>
-                        </div>
+
                         
-                        <div class="info-grid" style="margin-top: 15px;">
-                            <div class="info-item">
-                                <span class="label">RSI:</span>
-                                <span class="value">{summary.get('rsi', 'N/A')}</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="label">MACD:</span>
-                                <span class="value">{summary.get('macd', 'N/A')}</span>
-                            </div>
-                        </div>
+
                     </div>
                     
                     {self._generate_gemini_ai_panel(symbol, gemini_data) if gemini_data else ''}
@@ -2403,3 +2369,151 @@ class StockVisualizer:
                         </div>
                     </div>
         """ 
+    
+    def _get_rsi_signal(self, rsi):
+        """獲取RSI信號評分"""
+        try:
+            rsi_val = float(rsi)
+            if rsi_val >= 80:
+                return "超買 (賣出信號)"
+            elif rsi_val >= 70:
+                return "偏買 (謹慎)"
+            elif rsi_val <= 20:
+                return "超賣 (買入信號)"
+            elif rsi_val <= 30:
+                return "偏賣 (機會)"
+            else:
+                return "中性 (持有)"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_rsi_signal_color(self, rsi):
+        """獲取RSI信號顏色"""
+        try:
+            rsi_val = float(rsi)
+            if rsi_val >= 80:
+                return '#f44336'  # 紅色 (超買)
+            elif rsi_val >= 70:
+                return '#ff9800'  # 橙色 (偏買)
+            elif rsi_val <= 20:
+                return '#4CAF50'  # 綠色 (超賣)
+            elif rsi_val <= 30:
+                return '#2196F3'  # 藍色 (偏賣)
+            else:
+                return '#666666'  # 灰色 (中性)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_macd_signal(self, macd, macd_signal):
+        """獲取MACD信號評分"""
+        try:
+            macd_val = float(macd)
+            signal_val = float(macd_signal)
+            
+            if macd_val > signal_val and macd_val > 0:
+                return "強勢買入"
+            elif macd_val > signal_val:
+                return "買入信號"
+            elif macd_val < signal_val and macd_val < 0:
+                return "強勢賣出"
+            elif macd_val < signal_val:
+                return "賣出信號"
+            else:
+                return "中性"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_macd_signal_color(self, macd, macd_signal):
+        """獲取MACD信號顏色"""
+        try:
+            macd_val = float(macd)
+            signal_val = float(macd_signal)
+            
+            if macd_val > signal_val and macd_val > 0:
+                return '#4CAF50'  # 綠色 (強勢買入)
+            elif macd_val > signal_val:
+                return '#2196F3'  # 藍色 (買入信號)
+            elif macd_val < signal_val and macd_val < 0:
+                return '#f44336'  # 紅色 (強勢賣出)
+            elif macd_val < signal_val:
+                return '#ff9800'  # 橙色 (賣出信號)
+            else:
+                return '#666666'  # 灰色 (中性)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_bollinger_signal(self, close, bb_upper, bb_lower):
+        """獲取布林通道信號評分"""
+        try:
+            close_val = float(close)
+            upper_val = float(bb_upper)
+            lower_val = float(bb_lower)
+            
+            if close_val >= upper_val:
+                return "超買 (賣出)"
+            elif close_val <= lower_val:
+                return "超賣 (買入)"
+            elif close_val > (upper_val + lower_val) / 2:
+                return "偏強 (謹慎)"
+            else:
+                return "偏弱 (機會)"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_bollinger_signal_color(self, close, bb_upper, bb_lower):
+        """獲取布林通道信號顏色"""
+        try:
+            close_val = float(close)
+            upper_val = float(bb_upper)
+            lower_val = float(bb_lower)
+            
+            if close_val >= upper_val:
+                return '#f44336'  # 紅色 (超買)
+            elif close_val <= lower_val:
+                return '#4CAF50'  # 綠色 (超賣)
+            elif close_val > (upper_val + lower_val) / 2:
+                return '#ff9800'  # 橙色 (偏強)
+            else:
+                return '#2196F3'  # 藍色 (偏弱)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_ma_signal(self, close, sma_20, sma_50):
+        """獲取移動平均信號評分"""
+        try:
+            close_val = float(close)
+            sma_20_val = float(sma_20)
+            sma_50_val = float(sma_50)
+            
+            if close_val > sma_20_val > sma_50_val:
+                return "強勢多頭"
+            elif close_val > sma_20_val:
+                return "偏多"
+            elif close_val < sma_20_val < sma_50_val:
+                return "強勢空頭"
+            elif close_val < sma_20_val:
+                return "偏空"
+            else:
+                return "盤整"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_ma_signal_color(self, close, sma_20, sma_50):
+        """獲取移動平均信號顏色"""
+        try:
+            close_val = float(close)
+            sma_20_val = float(sma_20)
+            sma_50_val = float(sma_50)
+            
+            if close_val > sma_20_val > sma_50_val:
+                return '#4CAF50'  # 綠色 (強勢多頭)
+            elif close_val > sma_20_val:
+                return '#2196F3'  # 藍色 (偏多)
+            elif close_val < sma_20_val < sma_50_val:
+                return '#f44336'  # 紅色 (強勢空頭)
+            elif close_val < sma_20_val:
+                return '#ff9800'  # 橙色 (偏空)
+            else:
+                return '#666666'  # 灰色 (盤整)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
