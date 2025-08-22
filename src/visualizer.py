@@ -942,6 +942,9 @@ class StockVisualizer:
         sell_signals = [r for r in results if 'Sell' in str(r.get('signal', ''))]
         hold_signals = [r for r in results if 'Hold' in str(r.get('signal', ''))]
         
+        # 統計右側分析指標
+        right_analysis_stats = self._calculate_right_analysis_stats(results)
+        
         # 創建右側分析摘要
         tech_summary = f'''
          <div class="summary-card">
@@ -958,6 +961,18 @@ class StockVisualizer:
                  <div class="stat-item">
                      <div style="font-size: 2em; color: #f44336; font-weight: bold;">{len(sell_signals)}</div>
                      <div>賣出信號</div>
+                 </div>
+                 <div class="stat-item">
+                     <div style="font-size: 2em; color: #2196F3; font-weight: bold;">{right_analysis_stats['bullish_count']}</div>
+                     <div>看多指標</div>
+                 </div>
+                 <div class="stat-item">
+                     <div style="font-size: 2em; color: #f44336; font-weight: bold;">{right_analysis_stats['bearish_count']}</div>
+                     <div>看空指標</div>
+                 </div>
+                 <div class="stat-item">
+                     <div style="font-size: 2em; color: #FF9800; font-weight: bold;">{right_analysis_stats['pressure_risk_count']}</div>
+                     <div>賣壓風險</div>
                  </div>
              </div>
          </div>
@@ -1308,6 +1323,94 @@ class StockVisualizer:
              </div>
              '''
      
+    def _calculate_right_analysis_stats(self, results):
+        """計算右側分析統計數據"""
+        bullish_count = 0
+        bearish_count = 0
+        pressure_risk_count = 0
+        
+        for result in results:
+            try:
+                analyzer = result['analyzer']
+                if not hasattr(analyzer, 'data') or analyzer.data.empty:
+                    continue
+                
+                data = analyzer.data.tail(50)  # 取最近50天數據
+                
+                # 計算技術指標
+                # 布林通道
+                bb_period = 20
+                bb_std = 2
+                bb_middle = data['Close'].rolling(window=bb_period).mean()
+                bb_std_dev = data['Close'].rolling(window=bb_period).std()
+                bb_upper = bb_middle + (bb_std_dev * bb_std)
+                bb_lower = bb_middle - (bb_std_dev * bb_std)
+                
+                current_price = data['Close'].iloc[-1]
+                current_bb_upper = bb_upper.iloc[-1]
+                current_bb_lower = bb_lower.iloc[-1]
+                
+                # 布林通道評分
+                bb_position = (current_price - current_bb_lower) / (current_bb_upper - current_bb_lower) if current_bb_upper != current_bb_lower else 0.5
+                
+                # RSI
+                rsi_period = 14
+                delta = data['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
+                rs = gain / loss
+                rsi = 100 - (100 / (1 + rs))
+                current_rsi = rsi.iloc[-1]
+                
+                # MACD
+                exp1 = data['Close'].ewm(span=12).mean()
+                exp2 = data['Close'].ewm(span=26).mean()
+                macd_line = exp1 - exp2
+                macd_signal = macd_line.ewm(span=9).mean()
+                current_macd = macd_line.iloc[-1]
+                current_macd_signal = macd_signal.iloc[-1]
+                
+                # 價量分析
+                volume_analysis = self._analyze_volume_price(data)
+                
+                # 統計看多指標
+                bullish_indicators = 0
+                if bb_position < 0.2:  # 布林通道超賣
+                    bullish_indicators += 1
+                if current_rsi < 30:  # RSI超賣
+                    bullish_indicators += 1
+                if current_macd > current_macd_signal:  # MACD看多
+                    bullish_indicators += 1
+                
+                # 統計看空指標
+                bearish_indicators = 0
+                if bb_position > 0.8:  # 布林通道超買
+                    bearish_indicators += 1
+                if current_rsi > 70:  # RSI超買
+                    bearish_indicators += 1
+                if current_macd < current_macd_signal:  # MACD看空
+                    bearish_indicators += 1
+                
+                # 判斷整體趨勢
+                if bullish_indicators > bearish_indicators:
+                    bullish_count += 1
+                elif bearish_indicators > bullish_indicators:
+                    bearish_count += 1
+                
+                # 統計賣壓風險
+                if volume_analysis['pressure_type'] in ['強烈賣壓風險', '中等賣壓風險']:
+                    pressure_risk_count += 1
+                    
+            except Exception as e:
+                print(f"計算右側分析統計時發生錯誤: {e}")
+                continue
+        
+        return {
+            'bullish_count': bullish_count,
+            'bearish_count': bearish_count,
+            'pressure_risk_count': pressure_risk_count
+        }
+    
     def _analyze_volume_price(self, data):
          """分析價量關係"""
          try:
