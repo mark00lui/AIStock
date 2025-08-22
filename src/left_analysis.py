@@ -712,14 +712,22 @@ class LeftAnalysis:
                 all_confidences = []
                 
                 for source in valid_sources:
-                    if source['timeframes'][timeframe].get('target_mean'):
-                        all_targets.append(source['timeframes'][timeframe]['target_mean'])
-                    if source['timeframes'][timeframe].get('target_high'):
-                        all_highs.append(source['timeframes'][timeframe]['target_high'])
-                    if source['timeframes'][timeframe].get('target_low'):
-                        all_lows.append(source['timeframes'][timeframe]['target_low'])
-                    if source['timeframes'][timeframe].get('future_eps'):
-                        all_eps.append(source['timeframes'][timeframe]['future_eps'])
+                    if source['timeframes'][timeframe].get('target_mean') is not None:
+                        target_mean = source['timeframes'][timeframe]['target_mean']
+                        if target_mean is not None and not np.isnan(target_mean) and target_mean > 0:
+                            all_targets.append(target_mean)
+                    if source['timeframes'][timeframe].get('target_high') is not None:
+                        target_high = source['timeframes'][timeframe]['target_high']
+                        if target_high is not None and not np.isnan(target_high) and target_high > 0:
+                            all_highs.append(target_high)
+                    if source['timeframes'][timeframe].get('target_low') is not None:
+                        target_low = source['timeframes'][timeframe]['target_low']
+                        if target_low is not None and not np.isnan(target_low) and target_low > 0:
+                            all_lows.append(target_low)
+                    if source['timeframes'][timeframe].get('future_eps') is not None:
+                        eps_value = source['timeframes'][timeframe]['future_eps']
+                        if eps_value is not None and not np.isnan(eps_value):
+                            all_eps.append(eps_value)
                     if source['timeframes'][timeframe].get('recommended_action'):
                         all_actions.append(source['timeframes'][timeframe]['recommended_action'])
                     if source['timeframes'][timeframe].get('confidence'):
@@ -729,10 +737,16 @@ class LeftAnalysis:
                     years_ahead = int(timeframe.split('_')[0])
                     target_date = datetime.now() + timedelta(days=365 * years_ahead)
                     
+                    # 過濾掉無效的目標價格
+                    valid_targets = [t for t in all_targets if t is not None and not np.isnan(t) and t > 0]
+                    
+                    if not valid_targets:
+                        continue
+                    
                     # 計算統計數據
-                    target_mean = float(np.mean(all_targets))
-                    target_median = float(np.median(all_targets))
-                    target_std = float(np.std(all_targets))
+                    target_mean = float(np.mean(valid_targets))
+                    target_median = float(np.median(valid_targets))
+                    target_std = float(np.std(valid_targets))
                     
                     # 計算置信區間
                     confidence_interval = {
@@ -753,19 +767,19 @@ class LeftAnalysis:
                         'timeframe': f"{years_ahead}年後",
                         'target_date': target_date.strftime('%Y-%m-%d'),
                         'sources_count': len(valid_sources),
-                        'target_mean': target_mean,
-                        'target_median': target_median,
+                        'target_mean': float(target_mean) if target_mean is not None else None,
+                        'target_median': float(target_median) if target_median is not None else None,
                         'target_high': float(np.max(all_highs)) if all_highs else None,
                         'target_low': float(np.min(all_lows)) if all_lows else None,
-                        'target_std': target_std,
-                        'potential_return': ((target_mean - current_price) / current_price * 100) if current_price else None,
+                        'target_std': float(target_std) if target_std is not None else None,
+                        'potential_return': float(((target_mean - current_price) / current_price * 100)) if current_price and target_mean is not None else None,
                         'future_eps': float(np.mean(all_eps)) if all_eps else None,
                         'confidence_interval': confidence_interval,
                         'recommended_action': recommended_action,
                         'confidence': confidence,
-                        'buy_zone': enhanced_estimates['timeframes'][timeframe]['buy_zone'] if enhanced_estimates else None,
-                        'hold_zone': enhanced_estimates['timeframes'][timeframe]['hold_zone'] if enhanced_estimates else None,
-                        'sell_zone': enhanced_estimates['timeframes'][timeframe]['sell_zone'] if enhanced_estimates else None
+                        'buy_zone': enhanced_estimates['timeframes'][timeframe]['buy_zone'] if enhanced_estimates and timeframe in enhanced_estimates['timeframes'] and enhanced_estimates['timeframes'][timeframe].get('buy_zone') else None,
+                        'hold_zone': enhanced_estimates['timeframes'][timeframe]['hold_zone'] if enhanced_estimates and timeframe in enhanced_estimates['timeframes'] and enhanced_estimates['timeframes'][timeframe].get('hold_zone') else None,
+                        'sell_zone': enhanced_estimates['timeframes'][timeframe]['sell_zone'] if enhanced_estimates and timeframe in enhanced_estimates['timeframes'] and enhanced_estimates['timeframes'][timeframe].get('sell_zone') else None
                     }
             
             # 構建返回結果
@@ -786,6 +800,11 @@ class LeftAnalysis:
                     'enhanced_analysis': enhanced_estimates is not None
                 }
             }
+            
+            # 為了向後兼容，也提供扁平化的結構
+            response['1_year'] = results.get('1_year', {})
+            response['2_year'] = results.get('2_year', {})
+            response['3_year'] = results.get('3_year', {})
             
             # 添加歷史本益比數據（如果可用）
             historical_pe = self.calculate_enhanced_historical_pe_ratios(symbol)

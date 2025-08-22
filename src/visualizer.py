@@ -600,19 +600,28 @@ class StockVisualizer:
             current_price = 0.0
         
         # 獲取左側分析數據
-        year1_data = left_data.get('1_year', {}) if left_data else {}
-        target_price_1y = year1_data.get('target_price', current_price)
-        target_price_2y = left_data.get('2_year', {}).get('target_price', current_price) if left_data else current_price
-        target_price_3y = left_data.get('3_year', {}).get('target_price', current_price) if left_data else current_price
-        eps = year1_data.get('eps', 0.0)
+        timeframes_data = left_data.get('timeframes', {}) if left_data else {}
+        year1_data = timeframes_data.get('1_year', {}) if timeframes_data else {}
+        year2_data = timeframes_data.get('2_year', {}) if timeframes_data else {}
+        year3_data = timeframes_data.get('3_year', {}) if timeframes_data else {}
+        
+        # 獲取目標價格（使用 target_mean 作為主要目標價）
+        target_price_1y = year1_data.get('target_mean', current_price) if year1_data.get('target_mean') is not None else current_price
+        target_price_2y = year2_data.get('target_mean', current_price) if year2_data.get('target_mean') is not None else current_price
+        target_price_3y = year3_data.get('target_mean', current_price) if year3_data.get('target_mean') is not None else current_price
+        
+        # 獲取EPS（使用 future_eps）
+        eps = year1_data.get('future_eps', 0.0) if year1_data.get('future_eps') is not None else 0.0
+        
+        # 獲取建議動作和信心等級
         recommended_action_1y = year1_data.get('recommended_action', 'Hold')
         confidence_1y = year1_data.get('confidence', 'Medium')
-        potential_return_1y = year1_data.get('potential_return', 0.0)
+        potential_return_1y = year1_data.get('potential_return', 0.0) if year1_data.get('potential_return') is not None else 0.0
         
         # 獲取價格區間
-        buy_zone_1y = year1_data.get('buy_zone', 'N/A')
-        hold_zone_1y = year1_data.get('hold_zone', 'N/A')
-        sell_zone_1y = year1_data.get('sell_zone', 'N/A')
+        buy_zone_1y = year1_data.get('buy_zone', 'N/A') if year1_data.get('buy_zone') is not None else 'N/A'
+        hold_zone_1y = year1_data.get('hold_zone', 'N/A') if year1_data.get('hold_zone') is not None else 'N/A'
+        sell_zone_1y = year1_data.get('sell_zone', 'N/A') if year1_data.get('sell_zone') is not None else 'N/A'
         
         # 創建左側分析面板
         left_panel = f'''
@@ -978,11 +987,11 @@ class StockVisualizer:
                     <div>分析股票</div>
                 </div>
                 <div class="stat-item">
-                    <div style="font-size: 2em; color: #4CAF50; font-weight: bold;">{len([r for r in results if r.get('left_data', {}).get('1_year', {}).get('potential_return', 0) > 0])}</div>
+                    <div style="font-size: 2em; color: #4CAF50; font-weight: bold;">{len([r for r in results if r.get('left_data', {}).get('timeframes', {}).get('1_year', {}).get('potential_return', 0) is not None and r.get('left_data', {}).get('timeframes', {}).get('1_year', {}).get('potential_return', 0) > 0])}</div>
                     <div>正報酬</div>
                 </div>
                 <div class="stat-item">
-                    <div style="font-size: 2em; color: #f44336; font-weight: bold;">{len([r for r in results if r.get('left_data', {}).get('1_year', {}).get('potential_return', 0) < 0])}</div>
+                    <div style="font-size: 2em; color: #f44336; font-weight: bold;">{len([r for r in results if r.get('left_data', {}).get('timeframes', {}).get('1_year', {}).get('potential_return', 0) is not None and r.get('left_data', {}).get('timeframes', {}).get('1_year', {}).get('potential_return', 0) < 0])}</div>
                     <div>負報酬</div>
                 </div>
             </div>
@@ -1002,7 +1011,7 @@ class StockVisualizer:
         """創建增強的價格比較圖"""
         try:
             safe_symbol = symbol.replace('.', '_').replace('-', '_')
-            target_price = year1_data.get('target_price', current_price) if year1_data else current_price
+            target_price = year1_data.get('target_mean', current_price) if year1_data and year1_data.get('target_mean') is not None else current_price
             
             chart_js = f'''
             var priceData_{safe_symbol} = [
