@@ -301,6 +301,14 @@ class StockVisualizer:
                 gap: 30px;
                 padding: 30px;
             }
+        }
+        
+        @media (min-width: 1200px) {
+            .analysis-layout {
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 25px;
+                padding: 30px;
+            }
             
             .stock-header {
                 flex-direction: row;
@@ -682,6 +690,9 @@ class StockVisualizer:
         
         # 創建右側信號分析面板
         tech_panel = self._create_right_analysis_panel(analyzer, signal_data, signal_str)
+        
+        # 創建 Gemini AI 分析面板
+        gemini_panel = self._create_gemini_analysis_panel(gemini_data)
          
         # 創建技術分析圖表
         technical_chart = self._create_technical_chart(analyzer)
@@ -696,6 +707,7 @@ class StockVisualizer:
              <div class="analysis-layout">
                  {left_panel}
                  {tech_panel}
+                 {gemini_panel}
              </div>
              
              <div class="chart-container">
@@ -1319,6 +1331,127 @@ class StockVisualizer:
                  </div>
              </div>
              '''
+    
+    def _create_gemini_analysis_panel(self, gemini_data):
+        """創建 Gemini AI 分析面板"""
+        try:
+            if not gemini_data or gemini_data.get('metadata', {}).get('status') != 'success':
+                return '''
+                <div class="analysis-panel">
+                    <h4>🤖 Gemini AI 分析</h4>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">分析狀態:</span>
+                            <span class="value" style="color: #666;">暫無數據</span>
+                        </div>
+                    </div>
+                </div>
+                '''
+            
+            # 獲取股價預測數據
+            price_forecast = gemini_data.get('price_forecast', {})
+            price_1y = price_forecast.get('price_1y', 'N/A')
+            price_3y = price_forecast.get('price_3y', 'N/A')
+            price_5y = price_forecast.get('price_5y', 'N/A')
+            
+            # 獲取風險指標
+            risk_metrics = gemini_data.get('risk_metrics', {})
+            beta = risk_metrics.get('beta', 'N/A')
+            volatility = risk_metrics.get('volatility', 'N/A')
+            sharpe_ratio = risk_metrics.get('sharpe_ratio', 'N/A')
+            risk_level = risk_metrics.get('risk_level', 'N/A')
+            
+            # 獲取新聞和判斷
+            recent_news = gemini_data.get('recent_news', 'N/A')
+            ai_judgment = gemini_data.get('ai_judgment', 'N/A')
+            sentiment = gemini_data.get('sentiment', 'N/A')
+            
+            # 設定情緒顏色
+            sentiment_color = "#4CAF50" if sentiment == "看漲" else "#f44336" if sentiment == "看跌" else "#666"
+            
+            # 設定風險等級顏色
+            risk_color = "#f44336" if risk_level in ["極高", "高"] else "#ff9800" if risk_level == "中" else "#4CAF50"
+            
+            return f'''
+            <div class="analysis-panel">
+                <h4>🤖 Gemini AI 分析</h4>
+                
+                <!-- 股價預測 -->
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #2196F3;">
+                    <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">📈 股價預測</h5>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">1年目標:</span>
+                            <span class="value">{price_1y}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">3年目標:</span>
+                            <span class="value">{price_3y}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">5年目標:</span>
+                            <span class="value">{price_5y}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 風險指標 -->
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #FF9800;">
+                    <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">⚡ 風險指標</h5>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">Beta值:</span>
+                            <span class="value">{beta if isinstance(beta, (int, float)) else beta}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">波動率:</span>
+                            <span class="value">{volatility if isinstance(volatility, (int, float)) else volatility}{'%' if isinstance(volatility, (int, float)) else ''}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">夏普比率:</span>
+                            <span class="value">{sharpe_ratio if isinstance(sharpe_ratio, (int, float)) else sharpe_ratio}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">風險等級:</span>
+                            <span class="value" style="color: {risk_color};">{risk_level}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 重要新聞與AI判斷 -->
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #4CAF50;">
+                    <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">📰 市場動態</h5>
+                    <div class="info-grid">
+                        <div class="info-item" style="grid-column: span 2;">
+                            <span class="label">重要新聞:</span>
+                            <span class="value" style="font-size: 0.85em; line-height: 1.4;">{recent_news}</span>
+                        </div>
+                        <div class="info-item" style="grid-column: span 2;">
+                            <span class="label">AI判斷:</span>
+                            <span class="value" style="font-size: 0.85em; line-height: 1.4;">{ai_judgment}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">投資情緒:</span>
+                            <span class="value" style="color: {sentiment_color}; font-weight: bold;">{sentiment}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            '''
+            
+        except Exception as e:
+            print(f"創建 Gemini 分析面板時發生錯誤: {e}")
+            return '''
+            <div class="analysis-panel">
+                <h4>🤖 Gemini AI 分析</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="label">分析狀態:</span>
+                        <span class="value" style="color: #f44336;">分析失敗</span>
+                    </div>
+                </div>
+            </div>
+            '''
      
     def _calculate_right_analysis_stats(self, results):
         """計算右側分析統計數據"""
