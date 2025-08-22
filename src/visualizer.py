@@ -2075,6 +2075,31 @@ class StockVisualizer:
                             </div>
                         </div>
                         
+                        <!-- 價量關係分析 -->
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📈 價量關係分析</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <span style="font-weight: bold;">價量配合:</span>
+                                        <div style="margin-top: 3px; color: {self._get_price_volume_signal_color(summary)};">{self._get_price_volume_signal(summary)}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">成交量趨勢:</span>
+                                        <div style="margin-top: 3px; color: {self._get_volume_trend_color(summary.get('volume_trend', 'N/A'))};">{self._get_volume_trend_signal(summary.get('volume_trend', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">均線排列:</span>
+                                        <div style="margin-top: 3px; color: {self._get_ma_alignment_color(summary)};">{self._get_ma_alignment_signal(summary)}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">支撐阻力:</span>
+                                        <div style="margin-top: 3px; color: {self._get_support_resistance_color(summary)};">{self._get_support_resistance_signal(summary)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
 
                         
 
@@ -2515,5 +2540,229 @@ class StockVisualizer:
                 return '#ff9800'  # 橙色 (偏空)
             else:
                 return '#666666'  # 灰色 (盤整)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_price_volume_signal(self, summary):
+        """獲取價量配合信號評分"""
+        try:
+            # 這裡需要從summary中獲取更多數據，暫時返回基本判斷
+            # 實際應用中需要歷史價格和成交量數據
+            volume_trend = summary.get('volume_trend', 'N/A')
+            rsi = summary.get('rsi', 'N/A')
+            
+            if volume_trend == 'high' and rsi != 'N/A':
+                rsi_val = float(rsi)
+                if rsi_val > 70:
+                    return "天量高點 (危險)"
+                elif rsi_val < 30:
+                    return "放量築底 (機會)"
+                else:
+                    return "量價配合 (中性)"
+            elif volume_trend == 'low':
+                return "量能萎縮 (觀望)"
+            else:
+                return "量價正常"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_price_volume_signal_color(self, summary):
+        """獲取價量配合信號顏色"""
+        try:
+            volume_trend = summary.get('volume_trend', 'N/A')
+            rsi = summary.get('rsi', 'N/A')
+            
+            if volume_trend == 'high' and rsi != 'N/A':
+                rsi_val = float(rsi)
+                if rsi_val > 70:
+                    return '#f44336'  # 紅色 (天量高點危險)
+                elif rsi_val < 30:
+                    return '#4CAF50'  # 綠色 (放量築底機會)
+                else:
+                    return '#2196F3'  # 藍色 (量價配合)
+            elif volume_trend == 'low':
+                return '#ff9800'  # 橙色 (量能萎縮)
+            else:
+                return '#666666'  # 灰色 (正常)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_volume_trend_signal(self, volume_trend):
+        """獲取成交量趨勢信號"""
+        if volume_trend == 'high':
+            return "放量 (活躍)"
+        elif volume_trend == 'low':
+            return "縮量 (低迷)"
+        elif volume_trend == 'normal':
+            return "正常 (穩定)"
+        else:
+            return "數據不足"
+    
+    def _get_volume_trend_color(self, volume_trend):
+        """獲取成交量趨勢顏色"""
+        if volume_trend == 'high':
+            return '#2196F3'  # 藍色 (放量)
+        elif volume_trend == 'low':
+            return '#ff9800'  # 橙色 (縮量)
+        elif volume_trend == 'normal':
+            return '#4CAF50'  # 綠色 (正常)
+        else:
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_ma_alignment_signal(self, summary):
+        """獲取均線排列信號"""
+        try:
+            close = summary.get('close', 'N/A')
+            sma_20 = summary.get('sma_20', 'N/A')
+            sma_50 = summary.get('sma_50', 'N/A')
+            
+            if close == 'N/A' or sma_20 == 'N/A' or sma_50 == 'N/A':
+                return "數據不足"
+            
+            close_val = float(close)
+            sma_20_val = float(sma_20)
+            sma_50_val = float(sma_50)
+            
+            if close_val > sma_20_val > sma_50_val:
+                return "多頭排列 (強勢)"
+            elif close_val > sma_20_val and sma_20_val > sma_50_val:
+                return "偏多排列 (良好)"
+            elif close_val < sma_20_val < sma_50_val:
+                return "空頭排列 (弱勢)"
+            elif close_val < sma_20_val and sma_20_val < sma_50_val:
+                return "偏空排列 (謹慎)"
+            else:
+                return "均線糾結 (盤整)"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_ma_alignment_color(self, summary):
+        """獲取均線排列顏色"""
+        try:
+            close = summary.get('close', 'N/A')
+            sma_20 = summary.get('sma_20', 'N/A')
+            sma_50 = summary.get('sma_50', 'N/A')
+            
+            if close == 'N/A' or sma_20 == 'N/A' or sma_50 == 'N/A':
+                return '#666666'
+            
+            close_val = float(close)
+            sma_20_val = float(sma_20)
+            sma_50_val = float(sma_50)
+            
+            if close_val > sma_20_val > sma_50_val:
+                return '#4CAF50'  # 綠色 (多頭排列)
+            elif close_val > sma_20_val and sma_20_val > sma_50_val:
+                return '#2196F3'  # 藍色 (偏多排列)
+            elif close_val < sma_20_val < sma_50_val:
+                return '#f44336'  # 紅色 (空頭排列)
+            elif close_val < sma_20_val and sma_20_val < sma_50_val:
+                return '#ff9800'  # 橙色 (偏空排列)
+            else:
+                return '#666666'  # 灰色 (均線糾結)
+        except (ValueError, TypeError):
+            return '#666666'  # 灰色 (數據不足)
+    
+    def _get_support_resistance_signal(self, summary):
+        """獲取支撐阻力信號"""
+        try:
+            close = summary.get('close', 'N/A')
+            sma_20 = summary.get('sma_20', 'N/A')
+            sma_50 = summary.get('sma_50', 'N/A')
+            bb_upper = summary.get('bb_upper', 'N/A')
+            bb_lower = summary.get('bb_lower', 'N/A')
+            
+            if close == 'N/A':
+                return "數據不足"
+            
+            close_val = float(close)
+            
+            # 計算支撐阻力位
+            support_levels = []
+            resistance_levels = []
+            
+            if sma_20 != 'N/A':
+                sma_20_val = float(sma_20)
+                if close_val > sma_20_val:
+                    resistance_levels.append(sma_20_val)
+                else:
+                    support_levels.append(sma_20_val)
+            
+            if sma_50 != 'N/A':
+                sma_50_val = float(sma_50)
+                if close_val > sma_50_val:
+                    resistance_levels.append(sma_50_val)
+                else:
+                    support_levels.append(sma_50_val)
+            
+            if bb_upper != 'N/A':
+                bb_upper_val = float(bb_upper)
+                if close_val > bb_upper_val:
+                    resistance_levels.append(bb_upper_val)
+            
+            if bb_lower != 'N/A':
+                bb_lower_val = float(bb_lower)
+                if close_val < bb_lower_val:
+                    support_levels.append(bb_lower_val)
+            
+            # 判斷位置
+            if len(support_levels) > len(resistance_levels):
+                return "接近支撐 (機會)"
+            elif len(resistance_levels) > len(support_levels):
+                return "接近阻力 (謹慎)"
+            else:
+                return "區間震盪 (中性)"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_support_resistance_color(self, summary):
+        """獲取支撐阻力顏色"""
+        try:
+            close = summary.get('close', 'N/A')
+            sma_20 = summary.get('sma_20', 'N/A')
+            sma_50 = summary.get('sma_50', 'N/A')
+            bb_upper = summary.get('bb_upper', 'N/A')
+            bb_lower = summary.get('bb_lower', 'N/A')
+            
+            if close == 'N/A':
+                return '#666666'
+            
+            close_val = float(close)
+            
+            # 計算支撐阻力位
+            support_levels = []
+            resistance_levels = []
+            
+            if sma_20 != 'N/A':
+                sma_20_val = float(sma_20)
+                if close_val > sma_20_val:
+                    resistance_levels.append(sma_20_val)
+                else:
+                    support_levels.append(sma_20_val)
+            
+            if sma_50 != 'N/A':
+                sma_50_val = float(sma_50)
+                if close_val > sma_50_val:
+                    resistance_levels.append(sma_50_val)
+                else:
+                    support_levels.append(sma_50_val)
+            
+            if bb_upper != 'N/A':
+                bb_upper_val = float(bb_upper)
+                if close_val > bb_upper_val:
+                    resistance_levels.append(bb_upper_val)
+            
+            if bb_lower != 'N/A':
+                bb_lower_val = float(bb_lower)
+                if close_val < bb_lower_val:
+                    support_levels.append(bb_lower_val)
+            
+            # 判斷顏色
+            if len(support_levels) > len(resistance_levels):
+                return '#4CAF50'  # 綠色 (接近支撐)
+            elif len(resistance_levels) > len(support_levels):
+                return '#ff9800'  # 橙色 (接近阻力)
+            else:
+                return '#666666'  # 灰色 (區間震盪)
         except (ValueError, TypeError):
             return '#666666'  # 灰色 (數據不足)
