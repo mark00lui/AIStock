@@ -126,8 +126,8 @@ class StockAnalyzer:
         df = self.data.copy()
         
         # 檢查數據是否足夠
-        if len(df) < 50:
-            print(f"數據不足，只有 {len(df)} 筆記錄，需要至少 50 筆")
+        if len(df) < 20:
+            print(f"數據不足，只有 {len(df)} 筆記錄，需要至少 20 筆")
             return
         
         try:
@@ -164,6 +164,40 @@ class StockAnalyzer:
             # ATR (平均真實範圍)
             df['ATR'] = ta.volatility.AverageTrueRange(df['High'], df['Low'], df['Close']).average_true_range()
             
+            # 增強價量分析指標
+            # 1. 價量關係指標 (Price-Volume Trend) - 手動計算
+            df['PVT'] = ((df['Close'] - df['Close'].shift(1)) / df['Close'].shift(1) * df['Volume']).cumsum()
+            
+            # 2. 資金流量指標 (Money Flow Index)
+            df['MFI'] = ta.volume.money_flow_index(df['High'], df['Low'], df['Close'], df['Volume'])
+            
+            # 3. 成交量加權平均價格 (VWAP)
+            df['VWAP'] = (df['Close'] * df['Volume']).rolling(window=20).sum() / df['Volume'].rolling(window=20).sum()
+            
+            # 4. 籌碼成本分析 - 半年內平均成本
+            df['Cost_6M'] = df['Close'].rolling(window=126).mean()  # 約6個月交易日
+            
+            # 5. 籌碼密集區分析 - 使用布林通道的變體
+            df['Volume_Weighted_BB'] = (df['Close'] * df['Volume']).rolling(window=20).mean() / df['Volume'].rolling(window=20).mean()
+            df['Volume_BB_Upper'] = df['Volume_Weighted_BB'] + (df['Close'].rolling(window=20).std() * 2)
+            df['Volume_BB_Lower'] = df['Volume_Weighted_BB'] - (df['Close'].rolling(window=20).std() * 2)
+            
+            # 6. 均線排列分析
+            df['MA_Alignment'] = 0  # 0: 無序, 1: 多頭排列, -1: 空頭排列, 2: 強勢多頭, -2: 強勢空頭
+            
+            # 7. 趨勢強度指標
+            df['Trend_Strength'] = 0  # 趨勢強度 (-100 到 100)
+            
+            # 8. 橫盤整理指標
+            df['Sideways_Score'] = 0  # 橫盤整理分數 (0-100)
+            
+            # 9. 支撐阻力位分析
+            df['Support_Level'] = df['Close'].rolling(window=20).min()
+            df['Resistance_Level'] = df['Close'].rolling(window=20).max()
+            
+            # 10. 成交量異常指標
+            df['Volume_Ratio'] = df['Volume'] / df['Volume'].rolling(window=20).mean()
+            
             # 檢查計算結果
             technical_columns = ['SMA_20', 'SMA_50', 'SMA_120', 'BB_Upper', 'BB_Lower', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Histogram']
             for col in technical_columns:
@@ -174,17 +208,170 @@ class StockAnalyzer:
             
             self.data = df
             print("技術指標計算完成")
+            
+            # 計算均線排列和趨勢分析
+            self._analyze_ma_alignment_and_trends()
+            
         except Exception as e:
             print(f"計算技術指標時發生錯誤: {e}")
             import traceback
             traceback.print_exc()
             return
     
-
+    def _analyze_ma_alignment_and_trends(self):
+        """分析均線排列和趨勢形態"""
+        if self.data is None or len(self.data) < 50:
+            return
+        
+        df = self.data.copy()
+        
+        try:
+            for i in range(50, len(df)):  # 從第50天開始分析
+                current = df.iloc[i]
+                
+                # 1. 均線排列分析
+                close_price = current['Close']
+                sma_20 = current['SMA_20']
+                sma_50 = current['SMA_50']
+                sma_120 = current['SMA_120']
+                
+                if pd.isna(sma_20) or pd.isna(sma_50) or pd.isna(sma_120):
+                    continue
+                
+                # 判斷均線排列
+                if close_price > sma_20 > sma_50 > sma_120:
+                    # 強勢多頭排列：價格 > 20日線 > 50日線 > 120日線
+                    df.iloc[i, df.columns.get_loc('MA_Alignment')] = 2
+                elif close_price > sma_20 > sma_50:
+                    # 多頭排列：價格 > 20日線 > 50日線
+                    df.iloc[i, df.columns.get_loc('MA_Alignment')] = 1
+                elif close_price < sma_20 < sma_50 < sma_120:
+                    # 強勢空頭排列：價格 < 20日線 < 50日線 < 120日線
+                    df.iloc[i, df.columns.get_loc('MA_Alignment')] = -2
+                elif close_price < sma_20 < sma_50:
+                    # 空頭排列：價格 < 20日線 < 50日線
+                    df.iloc[i, df.columns.get_loc('MA_Alignment')] = -1
+                else:
+                    # 無序排列
+                    df.iloc[i, df.columns.get_loc('MA_Alignment')] = 0
+                
+                # 2. 趨勢強度計算
+                trend_strength = 0
+                
+                # 基於均線排列的趨勢強度
+                ma_alignment = df.iloc[i, df.columns.get_loc('MA_Alignment')]
+                if ma_alignment == 2:
+                    trend_strength += 40  # 強勢多頭
+                elif ma_alignment == 1:
+                    trend_strength += 20  # 多頭
+                elif ma_alignment == -2:
+                    trend_strength -= 40  # 強勢空頭
+                elif ma_alignment == -1:
+                    trend_strength -= 20  # 空頭
+                
+                # 基於價格位置的趨勢強度
+                if close_price > sma_20 * 1.05:  # 價格強勢突破20日線
+                    trend_strength += 15
+                elif close_price < sma_20 * 0.95:  # 價格跌破20日線
+                    trend_strength -= 15
+                
+                # 基於成交量的趨勢確認
+                volume_ratio = current.get('Volume_Ratio', 1.0)
+                if volume_ratio > 1.5 and ma_alignment > 0:  # 放量上漲
+                    trend_strength += 10
+                elif volume_ratio > 1.5 and ma_alignment < 0:  # 放量下跌
+                    trend_strength -= 10
+                
+                # 限制趨勢強度範圍
+                trend_strength = max(-100, min(100, trend_strength))
+                df.iloc[i, df.columns.get_loc('Trend_Strength')] = trend_strength
+                
+                # 3. 橫盤整理分析
+                sideways_score = 0
+                
+                # 計算最近20天的價格波動範圍
+                recent_20 = df.iloc[i-19:i+1]
+                price_range = recent_20['Close'].max() - recent_20['Close'].min()
+                avg_price = recent_20['Close'].mean()
+                volatility_ratio = price_range / avg_price if avg_price > 0 else 0
+                
+                # 如果波動率小於10%，認為是橫盤整理
+                if volatility_ratio < 0.10:
+                    sideways_score += 30
+                
+                # 均線糾纏（20日線和50日線接近）
+                ma_diff_ratio = abs(sma_20 - sma_50) / sma_50 if sma_50 > 0 else 1
+                if ma_diff_ratio < 0.05:  # 均線差距小於5%
+                    sideways_score += 25
+                
+                # 成交量穩定（無明顯放量或縮量）
+                avg_volume_ratio = recent_20['Volume_Ratio'].mean()
+                if 0.8 < avg_volume_ratio < 1.2:
+                    sideways_score += 20
+                
+                # 價格在均線附近徘徊
+                price_ma_diff = abs(close_price - sma_20) / sma_20 if sma_20 > 0 else 1
+                if price_ma_diff < 0.03:  # 價格與20日線差距小於3%
+                    sideways_score += 25
+                
+                sideways_score = min(100, sideways_score)
+                df.iloc[i, df.columns.get_loc('Sideways_Score')] = sideways_score
+            
+            self.data = df
+            
+            # 分析籌碼成本
+            self._analyze_cost_basis()
+            
+        except Exception as e:
+            print(f"分析均線排列和趨勢時發生錯誤: {e}")
+            import traceback
+            traceback.print_exc()
     
-
-    
-
+    def _analyze_cost_basis(self):
+        """分析籌碼成本"""
+        if self.data is None or len(self.data) < 126:  # 需要至少6個月數據
+            return
+        
+        df = self.data.copy()
+        
+        try:
+            # 添加籌碼成本相關欄位
+            df['Cost_Basis_3M'] = df['Close'].rolling(window=63).mean()  # 3個月平均成本
+            df['Cost_Basis_6M'] = df['Close'].rolling(window=126).mean()  # 6個月平均成本
+            df['Cost_Basis_1Y'] = df['Close'].rolling(window=252).mean()  # 1年平均成本
+            
+            # 籌碼密集區分析
+            df['Volume_Weighted_Price'] = (df['Close'] * df['Volume']).rolling(window=20).sum() / df['Volume'].rolling(window=20).sum()
+            
+            # 計算籌碼分布
+            for i in range(126, len(df)):
+                # 獲取最近6個月的數據
+                recent_6m = df.iloc[i-125:i+1]
+                
+                # 計算籌碼分布統計
+                volume_weighted_price = (recent_6m['Close'] * recent_6m['Volume']).sum() / recent_6m['Volume'].sum()
+                price_std = recent_6m['Close'].std()
+                
+                # 籌碼集中度（價格標準差越小，籌碼越集中）
+                concentration = 1 / (1 + price_std / volume_weighted_price) if volume_weighted_price > 0 else 0
+                
+                # 更新數據
+                df.iloc[i, df.columns.get_loc('Volume_Weighted_Price')] = volume_weighted_price
+                
+                # 計算當前價格相對於籌碼成本的位置
+                current_price = df.iloc[i]['Close']
+                cost_6m = df.iloc[i]['Cost_Basis_6M']
+                
+                if not pd.isna(cost_6m) and cost_6m > 0:
+                    cost_position = (current_price - cost_6m) / cost_6m
+                    # 將成本位置信息存儲在現有欄位中（可以擴展）
+            
+            self.data = df
+            
+        except Exception as e:
+            print(f"分析籌碼成本時發生錯誤: {e}")
+            import traceback
+            traceback.print_exc()
     
     def generate_signals(self):
         """生成買賣訊號"""
@@ -351,6 +538,44 @@ class StockAnalyzer:
         else:
             volume_trend = 'N/A'
         
+        # 新增：均線排列分析
+        ma_alignment = latest.get('MA_Alignment', 0)
+        ma_alignment_text = {
+            2: '強勢多頭排列',
+            1: '多頭排列',
+            0: '無序排列',
+            -1: '空頭排列',
+            -2: '強勢空頭排列'
+        }.get(ma_alignment, '無序排列')
+        
+        # 新增：趨勢強度
+        trend_strength = latest.get('Trend_Strength', 0)
+        
+        # 新增：橫盤整理分數
+        sideways_score = latest.get('Sideways_Score', 0)
+        
+        # 新增：籌碼成本分析
+        cost_6m = latest.get('Cost_Basis_6M', None)
+        cost_3m = latest.get('Cost_Basis_3M', None)
+        vwap = latest.get('VWAP', None)
+        
+        # 計算當前價格相對於籌碼成本的位置
+        cost_position_6m = None
+        cost_position_3m = None
+        if close_price is not None and cost_6m is not None and cost_6m > 0:
+            cost_position_6m = round(((close_price - cost_6m) / cost_6m) * 100, 2)
+        if close_price is not None and cost_3m is not None and cost_3m > 0:
+            cost_position_3m = round(((close_price - cost_3m) / cost_3m) * 100, 2)
+        
+        # 新增：價量關係指標
+        pvt = latest.get('PVT', None)
+        mfi = latest.get('MFI', None)
+        volume_ratio = latest.get('Volume_Ratio', None)
+        
+        # 新增：支撐阻力位
+        support_level = latest.get('Support_Level', None)
+        resistance_level = latest.get('Resistance_Level', None)
+        
         return {
             'total_days': len(recent_signals),
             'buy_signals': len(buy_signals),
@@ -372,7 +597,25 @@ class StockAnalyzer:
             'sma_50': round(sma_50, 2) if sma_50 is not None else 'N/A',
             'close': round(close_price, 2) if close_price is not None else 'N/A',
             'volume': f"{volume:,.0f}" if volume is not None else 'N/A',
-            'volume_trend': volume_trend
+            'volume_trend': volume_trend,
+            # 新增：均線排列和趨勢分析
+            'ma_alignment': ma_alignment,
+            'ma_alignment_text': ma_alignment_text,
+            'trend_strength': round(trend_strength, 1) if trend_strength is not None else 'N/A',
+            'sideways_score': round(sideways_score, 1) if sideways_score is not None else 'N/A',
+            # 新增：籌碼成本分析
+            'cost_6m': round(cost_6m, 2) if cost_6m is not None else 'N/A',
+            'cost_3m': round(cost_3m, 2) if cost_3m is not None else 'N/A',
+            'cost_position_6m': cost_position_6m,
+            'cost_position_3m': cost_position_3m,
+            'vwap': round(vwap, 2) if vwap is not None else 'N/A',
+            # 新增：價量關係指標
+            'pvt': round(pvt, 2) if pvt is not None else 'N/A',
+            'mfi': round(mfi, 2) if mfi is not None else 'N/A',
+            'volume_ratio': round(volume_ratio, 2) if volume_ratio is not None else 'N/A',
+            # 新增：支撐阻力位
+            'support_level': round(support_level, 2) if support_level is not None else 'N/A',
+            'resistance_level': round(resistance_level, 2) if resistance_level is not None else 'N/A'
         }
     
     def run_analysis(self):

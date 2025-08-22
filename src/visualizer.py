@@ -1479,43 +1479,15 @@ class StockVisualizer:
         創建技術分析圖表 - 可重用函數
         """
         try:
-            if analyzer.data is None or len(analyzer.data) < 50:
+            if analyzer.data is None or len(analyzer.data) < 10:
                 return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">數據不足，無法生成技術圖表</p>';"
             
-            # 取最近252個交易日
-            df = analyzer.data.tail(252).copy()
-            
-            # 計算技術指標
-            df['SMA_120'] = df['Close'].rolling(window=120).mean()
-            df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
-            
-            # 計算MACD
-            macd = ta.trend.MACD(df['Close'])
-            df['MACD'] = macd.macd()
-            df['MACD_Signal'] = macd.macd_signal()
-            df['MACD_Histogram'] = macd.macd_diff()
-            
-            # 計算布林通道
-            bb = ta.volatility.BollingerBands(df['Close'])
-            df['BB_Upper'] = bb.bollinger_hband()
-            df['BB_Lower'] = bb.bollinger_lband()
-            
-            # 移除NaN值
-            df = df.dropna()
-            
-            if len(df) < 50:
-                return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">有效數據不足，無法生成技術圖表</p>';"
+            # 使用原始數據，不進行額外的技術指標計算
+            df = analyzer.data.copy()
             
             # 準備圖表數據
             dates = df.index.strftime('%Y-%m-%d').tolist()
             close_prices = df['Close'].tolist()
-            sma_120 = df['SMA_120'].tolist()
-            bb_upper = df['BB_Upper'].tolist()
-            bb_lower = df['BB_Lower'].tolist()
-            rsi = df['RSI'].tolist()
-            macd = df['MACD'].tolist()
-            macd_signal = df['MACD_Signal'].tolist()
-            macd_histogram = df['MACD_Histogram'].tolist()
             
             # 將股票代碼中的點號替換為下劃線，使其成為有效的JavaScript變量名
             safe_symbol = analyzer.symbol.replace('.', '_')
@@ -1531,13 +1503,48 @@ class StockVisualizer:
                     name: '股價',
                     line: {{ color: '#333', width: 2 }},
                     yaxis: 'y'
+                }}
+            ];
+            
+            const technicalLayout_{safe_symbol} = {{
+                title: '{analyzer.symbol} - {analyzer.long_name if analyzer.long_name and analyzer.long_name != analyzer.symbol else analyzer.symbol} 技術分析',
+                height: 400,
+                yaxis: {{ title: '股價 ($)' }},
+                margin: {{ l: 60, r: 40, t: 80, b: 60 }}
+            }};
+            
+            Plotly.newPlot('technical-chart-{analyzer.symbol}', technicalData_{safe_symbol}, technicalLayout_{safe_symbol});
+            """
+            
+            return chart_js
+            
+            chart_js = f"""
+            const technicalData_{safe_symbol} = [
+                // 股價圖表
+                {{
+                    x: {dates},
+                    y: {close_prices},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '股價',
+                    line: {{ color: '#333', width: 2 }},
+                    yaxis: 'y'
                 }},
                 {{
                     x: {dates},
-                    y: {sma_120},
+                    y: {sma_20},
                     type: 'scatter',
                     mode: 'lines',
-                    name: '120MA',
+                    name: '20MA',
+                    line: {{ color: 'blue', width: 2 }},
+                    yaxis: 'y'
+                }},
+                {{
+                    x: {dates},
+                    y: {sma_50},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '50MA',
                     line: {{ color: 'orange', width: 2 }},
                     yaxis: 'y'
                 }},
@@ -1630,7 +1637,54 @@ class StockVisualizer:
             return chart_js
             
         except Exception as e:
-            return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">技術圖表生成失敗: {str(e)}</p>';"
+            print(f"創建技術圖表時發生錯誤: {e}")
+            # 嘗試創建簡單的價格圖表
+            try:
+                return self._create_simple_price_chart(analyzer, analyzer.data.tail(50).copy() if analyzer.data is not None else None)
+            except:
+                return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">技術圖表生成失敗</p>';"
+    
+    def _create_simple_price_chart(self, analyzer, df):
+        """
+        創建簡單的價格圖表 - 當技術指標計算失敗時使用
+        """
+        try:
+            if df is None or len(df) < 2:
+                return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">數據不足，無法生成圖表</p>';"
+            
+            # 準備圖表數據
+            dates = df.index.strftime('%Y-%m-%d').tolist()
+            close_prices = df['Close'].tolist()
+            
+            # 將股票代碼中的點號替換為下劃線
+            safe_symbol = analyzer.symbol.replace('.', '_')
+            
+            chart_js = f"""
+            const simpleData_{safe_symbol} = [
+                {{
+                    x: {dates},
+                    y: {close_prices},
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: '股價',
+                    line: {{ color: '#333', width: 2 }}
+                }}
+            ];
+            
+            const simpleLayout_{safe_symbol} = {{
+                title: '{analyzer.symbol} - {analyzer.long_name if analyzer.long_name and analyzer.long_name != analyzer.symbol else analyzer.symbol} 價格走勢',
+                height: 400,
+                yaxis: {{ title: '價格 ($)' }},
+                margin: {{ l: 60, r: 40, t: 80, b: 60 }}
+            }};
+            
+            Plotly.newPlot('technical-chart-{analyzer.symbol}', simpleData_{safe_symbol}, simpleLayout_{safe_symbol});
+            """
+            
+            return chart_js
+            
+        except Exception as e:
+            return f"document.getElementById('technical-chart-{analyzer.symbol}').innerHTML = '<p style=\"text-align: center; color: #666;\">簡單圖表生成失敗</p>';"
     
     def _generate_summary_stats(self, all_results):
         """
@@ -2098,6 +2152,57 @@ class StockVisualizer:
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        
+                        <!-- 趨勢形態分析 -->
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">📊 趨勢形態分析</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <span style="font-weight: bold;">均線排列:</span>
+                                        <div style="margin-top: 3px; color: {self._get_ma_alignment_text_color(summary.get('ma_alignment', 0))};">{summary.get('ma_alignment_text', 'N/A')}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">趨勢強度:</span>
+                                        <div style="margin-top: 3px; color: {self._get_trend_strength_color(summary.get('trend_strength', 'N/A'))};">{self._get_trend_strength_text(summary.get('trend_strength', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">橫盤整理:</span>
+                                        <div style="margin-top: 3px; color: {self._get_sideways_score_color(summary.get('sideways_score', 'N/A'))};">{self._get_sideways_score_text(summary.get('sideways_score', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">資金流向:</span>
+                                        <div style="margin-top: 3px; color: {self._get_mfi_signal_color(summary.get('mfi', 'N/A'))};">{self._get_mfi_signal(summary.get('mfi', 'N/A'))}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 籌碼成本分析 -->
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <h5 style="margin: 0 0 10px 0; font-size: 0.9em;">💰 籌碼成本分析</h5>
+                            <div style="font-size: 0.85em; line-height: 1.4;">
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                    <div>
+                                        <span style="font-weight: bold;">6月平均成本:</span>
+                                        <div style="margin-top: 3px;">${summary.get('cost_6m', 'N/A')}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">3月平均成本:</span>
+                                        <div style="margin-top: 3px;">${summary.get('cost_3m', 'N/A')}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">成本位置(6M):</span>
+                                        <div style="margin-top: 3px; color: {self._get_cost_position_color(summary.get('cost_position_6m', 'N/A'))};">{self._get_cost_position_text(summary.get('cost_position_6m', 'N/A'))}</div>
+                                    </div>
+                                    <div>
+                                        <span style="font-weight: bold;">VWAP:</span>
+                                        <div style="margin-top: 3px;">${summary.get('vwap', 'N/A')}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         </div>
                         
 
@@ -2608,6 +2713,159 @@ class StockVisualizer:
             return '#4CAF50'  # 綠色 (正常)
         else:
             return '#666666'  # 灰色 (數據不足)
+    
+    # 新增：趨勢形態分析輔助方法
+    def _get_ma_alignment_text_color(self, ma_alignment):
+        """獲取均線排列文字顏色"""
+        try:
+            ma_alignment = int(ma_alignment)
+            if ma_alignment == 2:
+                return '#4CAF50'  # 綠色 (強勢多頭)
+            elif ma_alignment == 1:
+                return '#8BC34A'  # 淺綠色 (多頭)
+            elif ma_alignment == 0:
+                return '#FF9800'  # 橙色 (無序)
+            elif ma_alignment == -1:
+                return '#FF5722'  # 深橙色 (空頭)
+            elif ma_alignment == -2:
+                return '#F44336'  # 紅色 (強勢空頭)
+            else:
+                return '#666666'  # 灰色
+        except (ValueError, TypeError):
+            return '#666666'
+    
+    def _get_trend_strength_color(self, trend_strength):
+        """獲取趨勢強度顏色"""
+        try:
+            trend_strength = float(trend_strength)
+            if trend_strength >= 30:
+                return '#4CAF50'  # 綠色 (強勢上漲)
+            elif trend_strength >= 10:
+                return '#8BC34A'  # 淺綠色 (上漲)
+            elif trend_strength >= -10:
+                return '#FF9800'  # 橙色 (震盪)
+            elif trend_strength >= -30:
+                return '#FF5722'  # 深橙色 (下跌)
+            else:
+                return '#F44336'  # 紅色 (強勢下跌)
+        except (ValueError, TypeError):
+            return '#666666'
+    
+    def _get_trend_strength_text(self, trend_strength):
+        """獲取趨勢強度文字"""
+        try:
+            trend_strength = float(trend_strength)
+            if trend_strength >= 30:
+                return f"強勢上漲 ({trend_strength:.0f})"
+            elif trend_strength >= 10:
+                return f"上漲趨勢 ({trend_strength:.0f})"
+            elif trend_strength >= -10:
+                return f"震盪整理 ({trend_strength:.0f})"
+            elif trend_strength >= -30:
+                return f"下跌趨勢 ({trend_strength:.0f})"
+            else:
+                return f"強勢下跌 ({trend_strength:.0f})"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_sideways_score_color(self, sideways_score):
+        """獲取橫盤整理分數顏色"""
+        try:
+            sideways_score = float(sideways_score)
+            if sideways_score >= 70:
+                return '#4CAF50'  # 綠色 (明顯橫盤)
+            elif sideways_score >= 50:
+                return '#8BC34A'  # 淺綠色 (偏橫盤)
+            elif sideways_score >= 30:
+                return '#FF9800'  # 橙色 (部分橫盤)
+            else:
+                return '#666666'  # 灰色 (趨勢明顯)
+        except (ValueError, TypeError):
+            return '#666666'
+    
+    def _get_sideways_score_text(self, sideways_score):
+        """獲取橫盤整理分數文字"""
+        try:
+            sideways_score = float(sideways_score)
+            if sideways_score >= 70:
+                return f"明顯橫盤 ({sideways_score:.0f})"
+            elif sideways_score >= 50:
+                return f"偏橫盤 ({sideways_score:.0f})"
+            elif sideways_score >= 30:
+                return f"部分橫盤 ({sideways_score:.0f})"
+            else:
+                return f"趨勢明顯 ({sideways_score:.0f})"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    def _get_mfi_signal_color(self, mfi):
+        """獲取資金流向指標顏色"""
+        try:
+            mfi = float(mfi)
+            if mfi >= 80:
+                return '#F44336'  # 紅色 (超買)
+            elif mfi >= 60:
+                return '#FF9800'  # 橙色 (偏買)
+            elif mfi >= 40:
+                return '#2196F3'  # 藍色 (中性)
+            elif mfi >= 20:
+                return '#8BC34A'  # 淺綠色 (偏賣)
+            else:
+                return '#4CAF50'  # 綠色 (超賣)
+        except (ValueError, TypeError):
+            return '#666666'
+    
+    def _get_mfi_signal(self, mfi):
+        """獲取資金流向指標信號"""
+        try:
+            mfi = float(mfi)
+            if mfi >= 80:
+                return f"超買 ({mfi:.0f})"
+            elif mfi >= 60:
+                return f"偏買 ({mfi:.0f})"
+            elif mfi >= 40:
+                return f"中性 ({mfi:.0f})"
+            elif mfi >= 20:
+                return f"偏賣 ({mfi:.0f})"
+            else:
+                return f"超賣 ({mfi:.0f})"
+        except (ValueError, TypeError):
+            return "數據不足"
+    
+    # 新增：籌碼成本分析輔助方法
+    def _get_cost_position_color(self, cost_position):
+        """獲取成本位置顏色"""
+        try:
+            cost_position = float(cost_position)
+            if cost_position >= 10:
+                return '#F44336'  # 紅色 (遠高於成本)
+            elif cost_position >= 5:
+                return '#FF9800'  # 橙色 (高於成本)
+            elif cost_position >= -5:
+                return '#2196F3'  # 藍色 (接近成本)
+            elif cost_position >= -10:
+                return '#8BC34A'  # 淺綠色 (低於成本)
+            else:
+                return '#4CAF50'  # 綠色 (遠低於成本)
+        except (ValueError, TypeError):
+            return '#666666'
+    
+    def _get_cost_position_text(self, cost_position):
+        """獲取成本位置文字"""
+        try:
+            cost_position = float(cost_position)
+            if cost_position >= 10:
+                return f"遠高於成本 (+{cost_position:.1f}%)"
+            elif cost_position >= 5:
+                return f"高於成本 (+{cost_position:.1f}%)"
+            elif cost_position >= -5:
+                return f"接近成本 ({cost_position:.1f}%)"
+            elif cost_position >= -10:
+                return f"低於成本 ({cost_position:.1f}%)"
+            else:
+                return f"遠低於成本 ({cost_position:.1f}%)"
+        except (ValueError, TypeError):
+            return "數據不足"
     
     def _get_ma_alignment_signal(self, summary):
         """獲取均線排列信號"""
