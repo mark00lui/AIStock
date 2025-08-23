@@ -966,14 +966,17 @@ class StockVisualizer:
         hold_signals = []
         
         for r in results:
-            signal_str = str(r.get('signal', '')).upper()
-            if isinstance(r.get('signal'), dict):
-                signal_str = str(r.get('signal', {}).get('signal', '')).upper()
+            # 正確處理信號數據結構
+            signal_data = r.get('signal', {})
+            if isinstance(signal_data, dict):
+                signal_str = signal_data.get('signal', '')
+            else:
+                signal_str = str(signal_data)
             
-            # 優先級：SELL > BUY > HOLD
-            if 'SELL' in signal_str:
+            # 優先級：賣出 > 買入 > 持有
+            if '賣出' in signal_str:
                 sell_signals.append(r)
-            elif 'BUY' in signal_str:
+            elif '買入' in signal_str:
                 buy_signals.append(r)
             else:
                 hold_signals.append(r)
