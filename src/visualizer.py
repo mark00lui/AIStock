@@ -534,13 +534,15 @@ class StockVisualizer:
                         display_name = stock_name[:12] + ('...' if len(stock_name) > 12 else '')
                         
                         # 使用修正後的信號判斷邏輯
-                        signal_str = str(result.get('signal', '')).upper()
-                        if isinstance(result.get('signal'), dict):
-                            signal_str = str(result.get('signal', {}).get('signal', '')).upper()
+                        signal_data = result.get('signal', {})
+                        if isinstance(signal_data, dict):
+                            signal_str = signal_data.get('signal', '')
+                        else:
+                            signal_str = str(signal_data)
                         
-                        if 'SELL' in signal_str:
+                        if '賣出' in signal_str:
                             signal_color = '#f44336'
-                        elif 'BUY' in signal_str:
+                        elif '買入' in signal_str:
                             signal_color = '#4CAF50'
                         else:
                             signal_color = '#ff9800'
@@ -560,13 +562,15 @@ class StockVisualizer:
                 display_name = stock_name[:12] + ('...' if len(stock_name) > 12 else '')
                 
                 # 使用修正後的信號判斷邏輯
-                signal_str = str(result.get('signal', '')).upper()
-                if isinstance(result.get('signal'), dict):
-                    signal_str = str(result.get('signal', {}).get('signal', '')).upper()
+                signal_data = result.get('signal', {})
+                if isinstance(signal_data, dict):
+                    signal_str = signal_data.get('signal', '')
+                else:
+                    signal_str = str(signal_data)
                 
-                if 'SELL' in signal_str:
+                if '賣出' in signal_str:
                     signal_color = '#f44336'
-                elif 'BUY' in signal_str:
+                elif '買入' in signal_str:
                     signal_color = '#4CAF50'
                 else:
                     signal_color = '#ff9800'
@@ -618,8 +622,18 @@ class StockVisualizer:
         stock_display_name = f"{stock_name} ({symbol})"
         
         # 獲取信號信息
-        signal_str = str(signal_data.get('signal', 'HOLD')).upper() if isinstance(signal_data, dict) else str(signal_data).upper()
-        signal_class = signal_str.lower()
+        if isinstance(signal_data, dict):
+            signal_str = signal_data.get('signal', '持有')
+        else:
+            signal_str = str(signal_data)
+        
+        # 根據信號確定CSS類別
+        if '賣出' in signal_str:
+            signal_class = 'sell'
+        elif '買入' in signal_str:
+            signal_class = 'buy'
+        else:
+            signal_class = 'hold'
         
         # 獲取當前價格
         try:
