@@ -617,9 +617,13 @@ class StockVisualizer:
         left_data = result.get('left_data', {})
         gemini_data = result.get('gemini_data', {})
         
-        # 獲取股票顯示名稱
-        stock_name = getattr(analyzer, 'long_name', symbol)
-        stock_display_name = f"{stock_name} ({symbol})"
+        # 獲取股票顯示名稱 - 優先使用Gemini返回的中文名字
+        gemini_chinese_name = gemini_data.get('chinese_name', 'N/A') if gemini_data else 'N/A'
+        if gemini_chinese_name and gemini_chinese_name != 'N/A':
+            stock_display_name = f"{gemini_chinese_name} ({symbol})"
+        else:
+            stock_name = getattr(analyzer, 'long_name', symbol)
+            stock_display_name = f"{stock_name} ({symbol})"
         
         # 獲取信號信息
         if isinstance(signal_data, dict):
@@ -790,8 +794,16 @@ class StockVisualizer:
         """生成單一股票HTML報告"""
         symbol = result['symbol']
         analyzer = result['analyzer']
-        stock_name = getattr(analyzer, 'long_name', symbol)
-        stock_display_name = f"{stock_name} ({symbol})"
+        gemini_data = result.get('gemini_data', {})
+        
+        # 獲取股票顯示名稱 - 優先使用Gemini返回的中文名字
+        gemini_chinese_name = gemini_data.get('chinese_name', 'N/A') if gemini_data else 'N/A'
+        if gemini_chinese_name and gemini_chinese_name != 'N/A':
+            stock_display_name = f"{gemini_chinese_name} ({symbol})"
+            stock_name = gemini_chinese_name
+        else:
+            stock_name = getattr(analyzer, 'long_name', symbol)
+            stock_display_name = f"{stock_name} ({symbol})"
         
         # 組合所有CSS
         all_css = self._get_base_css() + self._get_navigation_css() + self._get_component_css() + self._get_summary_css()
@@ -1535,6 +1547,9 @@ class StockVisualizer:
                 </div>
                 '''
             
+            # 獲取股票中文名字
+            chinese_name = gemini_data.get('chinese_name', 'N/A')
+            
             # 獲取股價預測數據
             price_forecast = gemini_data.get('price_forecast', {})
             price_1y = price_forecast.get('price_1y', 'N/A')
@@ -1562,6 +1577,17 @@ class StockVisualizer:
             return f'''
             <div class="analysis-panel">
                 <h4>🤖 Gemini AI 分析</h4>
+                
+                <!-- 股票中文名稱 -->
+                <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #9C27B0;">
+                    <h5 style="margin: 0 0 10px 0; color: #333; font-size: 0.9em;">🏢 公司資訊</h5>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">中文名稱:</span>
+                            <span class="value" style="font-weight: bold; color: #9C27B0;">{chinese_name}</span>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- 股價預測 -->
                 <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #2196F3;">

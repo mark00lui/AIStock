@@ -609,6 +609,7 @@ class GeminiStockAnalyzer:
 請返回以下JSON格式：
 {{
     "symbol": "{symbol}",
+    "chinese_name": "股票中文名稱（如：台積電、蘋果公司、特斯拉等）",
     "price_forecast": {{
         "price_1y": "一年後股價範圍",
         "price_3y": "三年後股價範圍", 
@@ -683,7 +684,7 @@ class GeminiStockAnalyzer:
 請返回以下JSON格式：
 {{
     "stocks": {{
-        {', '.join([f'"{symbol}": {{"symbol": "{symbol}", "price_forecast": {{"price_1y": "一年後股價範圍", "price_3y": "三年後股價範圍", "price_5y": "五年後股價範圍"}}, "recent_news": "近期最重大新聞消息（30字內）", "ai_judgment": "AI對該消息的判斷（30字內）", "sentiment": "看漲/看跌/中性", "risk_metrics": {{"beta": 數值（如1.25，相對於對應市場指數的Beta值，必須是數字）, "volatility": 數值（如35.5，年化波動率百分比，必須是數字）, "sharpe_ratio": 數值（如0.85，夏普比率，必須是數字）, "market_correlation": 數值（如0.72，與市場相關性係數，必須是數字）, "risk_level": "極低/低/中/高/極高"}}}}' for symbol in symbols])}
+        {', '.join([f'"{symbol}": {{"symbol": "{symbol}", "chinese_name": "股票中文名稱（如：台積電、蘋果公司、特斯拉等）", "price_forecast": {{"price_1y": "一年後股價範圍", "price_3y": "三年後股價範圍", "price_5y": "五年後股價範圍"}}, "recent_news": "近期最重大新聞消息（30字內）", "ai_judgment": "AI對該消息的判斷（30字內）", "sentiment": "看漲/看跌/中性", "risk_metrics": {{"beta": 數值（如1.25，相對於對應市場指數的Beta值，必須是數字）, "volatility": 數值（如35.5，年化波動率百分比，必須是數字）, "sharpe_ratio": 數值（如0.85，夏普比率，必須是數字）, "market_correlation": 數值（如0.72，與市場相關性係數，必須是數字）, "risk_level": "極低/低/中/高/極高"}}}}' for symbol in symbols])}
     }}
 }}
 
