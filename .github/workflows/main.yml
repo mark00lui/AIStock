@@ -53,6 +53,7 @@ jobs:
             [Tesla-2] 3003.TW 5234.TW 3374.TW 6456.TW 6869.TW CATL PCRFY 3005.TW 6412.TW \
             [Tesla-3] 2330.TW 2454.TW 3034.TW 2303.TW 4966.TWO 3529.TWO 3443.TW SSNLF \
             [Tesla-4] ALB BHP GLNCY LAC SQM  MP MPIIF \
+            [AI-SW] PLTR RBRK FIG C3AI SNOW DDOG \
             [CPO] 2345.TW 6223.TWO 3081.TWO 3363.TWO 3450.TW 4979.TWO 3163.TWO \
             [Agent] 3702.TW 5434.TW 3036.TW 3048.TW 8112.TW \
             [Apple] AAPL 3008.TW 2392.TW 6197.TW \
@@ -64,6 +65,7 @@ jobs:
             [Tech-Finance] SOFI COIN HOOD PYPL UPST CRCL MARA \
             [Mining] MARA RIOT CLSK CORZ CIFR WULF BITF IREN HUT \
             [Insurance] BRK.B PGR TRV ALL MKL AIG ACGL CINF KNSL \
+            [EC-EM] MELI SE CPNG BABA JD PDD \
             --save-daily-report \
             --GEMINI-API ${{ secrets.GEMINI_API_KEY }}
 
