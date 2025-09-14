@@ -35,7 +35,7 @@ class GeminiStockAnalyzer:
             "Content-Type": "application/json"
         }
         
-    def _make_api_request(self, prompt: str, max_retries: int = 3) -> Optional[Dict[str, Any]]:
+    def _make_api_request(self, prompt: str, max_retries: int = 4) -> Optional[Dict[str, Any]]:
         """
         發送 API 請求到 Gemini，包含重試機制
         
@@ -62,7 +62,7 @@ class GeminiStockAnalyzer:
                         "temperature": 0.7,
                         "topK": 40,
                         "topP": 0.95,
-                        "maxOutputTokens": 2048
+                        "maxOutputTokens": 8192
                     }
                 }
                 

@@ -176,8 +176,8 @@ def main():
                     # 添加延遲避免API限制 (2分鐘)
                     import time
                     if batch_num < total_batches:  # 不是最後一批才需要等待
-                        print(f"    ⏳ 等待 3 分鐘避免 API 速率限制...")
-                        time.sleep(180)  # 3分鐘 = 180秒
+                        print(f"    ⏳ 等待 3.5 分鐘避免 API 速率限制...")
+                        time.sleep(210)  # 3.5分鐘 = 210秒
                     
             except Exception as e:
                 print(f"    ❌ 批量Gemini AI分析異常: {e}")
